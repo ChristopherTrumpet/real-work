@@ -8,7 +8,7 @@ export default async function PreviewPage(props: {
   const searchParams = await props.searchParams;
   const postId = searchParams.postId as string | undefined;
   let post = null;
-  let comments = null;
+  let comments: any[] | undefined = undefined;
 
   if (postId) {
     const supabase = await createClient();
@@ -30,7 +30,7 @@ export default async function PreviewPage(props: {
         .eq('post_id', postId)
         .order('created_at', { ascending: false });
       
-      comments = commentsData;
+      comments = commentsData || [];
     }
   }
 

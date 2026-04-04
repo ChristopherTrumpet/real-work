@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useRef, useEffect } from 'react'
-import { isContainerReady, killContainer } from '@/app/actions/docker'
+import { isContainerReady, killContainer, getDockerHostIp } from '@/app/actions/docker'
 
 // Define the props for our component
 interface DraggableWindowProps {
@@ -13,6 +13,7 @@ export default function DraggableWindow({ port, onClose }: DraggableWindowProps)
   const [isReady, setIsReady] = useState(false)
   const [refreshKey, setRefreshKey] = useState(Date.now())
   const [isKilling, setIsKilling] = useState(false)
+  const [dockerHostIp, setDockerHostIp] = useState('localhost')
 
   // Window state
   const [isMaximized, setIsMaximized] = useState(false)
@@ -28,7 +29,15 @@ export default function DraggableWindow({ port, onClose }: DraggableWindowProps)
   const resizeStartSize = useRef({ width: 0, height: 0 })
   const windowRef = useRef<HTMLDivElement>(null)
   
-  const src = `http://localhost:${port}`
+  const src = `http://${dockerHostIp}:${port}`
+
+  useEffect(() => {
+    async function fetchIp() {
+      const ip = await getDockerHostIp()
+      setDockerHostIp(ip)
+    }
+    fetchIp()
+  }, [])
 
   // Reset readiness when port changes
   useEffect(() => {

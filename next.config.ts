@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  serverExternalPackages: ["dockerode", "ssh2", "tar-fs", "docker-modem"]
 };
 
 export default nextConfig;

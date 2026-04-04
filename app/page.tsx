@@ -1,9 +1,7 @@
 import Link from 'next/link'
 import { createClient } from '@/utils/supabase/server'
-import { deployContainer } from './actions/docker'
+import { deployContainer, listVolumes } from './actions/docker'
 import { startStudioSession } from './actions/studio'
-import fs from 'fs'
-import path from 'path'
 
 export default async function Home() {
   const supabase = await createClient()
@@ -17,12 +15,13 @@ export default async function Home() {
     .select('*, profiles!user_id(username, full_name)')
     .order('created_at', { ascending: false })
 
-  // Check which containers have active local sessions
+  // Check which containers have active remote volumes
   const activeSessions = new Set<string>()
   if (user && containers) {
+    const remoteVolumes = await listVolumes();
     containers.forEach(container => {
-      const localPath = path.join(process.cwd(), 'container_data', user.id, container.id)
-      if (fs.existsSync(localPath)) {
+      const volumeName = `data-${user.id}-${container.id}`;
+      if (remoteVolumes.includes(volumeName)) {
         activeSessions.add(container.id)
       }
     })

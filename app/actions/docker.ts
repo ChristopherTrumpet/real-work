@@ -1,28 +1,101 @@
 'use server'
 
-import { exec } from 'child_process'
-import { promisify } from 'util'
 import { redirect } from 'next/navigation'
 import net from 'net'
 import fs from 'fs'
 import path from 'path'
+import Docker from 'dockerode'
+import * as https from 'https';
 
-const execAsync = promisify(exec)
+const dockerHostIp = process.env.DOCKER_HOST_IP || '127.0.0.1';
 
-export async function isContainerReady(port: number): Promise<boolean> {
-// ... existing isContainerReady code ...
+const dockerOptions: Docker.DockerOptions = {};
+
+// Support both naming conventions from the setup script and the previous code
+const caPem = process.env.DOCKER_CA_PEM || process.env.DOCKER_CA_CERT;
+const clientPem = process.env.DOCKER_CLIENT_PEM || process.env.DOCKER_CLIENT_CERT;
+const clientKeyPem = process.env.DOCKER_CLIENT_KEY_PEM || process.env.DOCKER_CLIENT_KEY;
+
+if (caPem && clientPem && clientKeyPem) {
+  const caContent = caPem.replace(/\\n/g, '\n');
+  const certContent = clientPem.replace(/\\n/g, '\n');
+  const keyContent = clientKeyPem.replace(/\\n/g, '\n');
+
+  const agent = new https.Agent({
+    ca: caContent,
+    cert: certContent,
+    key: keyContent,
+    rejectUnauthorized: false,
+    checkServerIdentity: (hostname, cert) => {
+      return undefined;
+    },
+  });
+
+  dockerOptions.host = dockerHostIp;
+  dockerOptions.port = 2376;
+  dockerOptions.protocol = 'https';
+  dockerOptions.agent = agent;
+} else if (process.env.DOCKER_HOST_IP) {
+  dockerOptions.host = dockerHostIp;
+  dockerOptions.port = 2375;
+}
+
+const docker = new Docker(dockerOptions);
+
+export async function getDockerHostIp(): Promise<string> {
+  return dockerHostIp;
+}
+
+export async function listVolumes(): Promise<string[]> {
+  try {
+    const volumesInfo = await docker.listVolumes();
+    return (volumesInfo.Volumes || []).map(v => v.Name);
+  } catch (error) {
+    console.error('Error listing volumes:', error);
+    return [];
+  }
+}
+
+export async function testConnectivity(port: number): Promise<{ success: boolean; message: string }> {
+  const host = dockerHostIp;
   return new Promise((resolve) => {
     const socket = new net.Socket()
-    const onError = () => {
+    const start = Date.now();
+    
+    socket.setTimeout(10000)
+    socket.on('error', (err) => {
+      socket.destroy()
+      resolve({ success: false, message: `Connection failed to ${host}:${port} after ${Date.now() - start}ms: ${err.message}` })
+    })
+    socket.on('timeout', () => {
+      socket.destroy()
+      resolve({ success: false, message: `Connection timed out to ${host}:${port} after ${Date.now() - start}ms` })
+    })
+
+    socket.connect(port, host, () => {
+      socket.destroy()
+      resolve({ success: true, message: `Successfully connected to ${host}:${port} in ${Date.now() - start}ms` })
+    })
+  })
+}
+
+export async function isContainerReady(port: number): Promise<boolean> {
+  const host = dockerHostIp;
+  console.log(`Checking readiness on ${host}:${port}...`);
+  return new Promise((resolve) => {
+    const socket = new net.Socket()
+    const onError = (err: any) => {
+      console.log(`Readiness check failed for ${host}:${port}: ${err.message || err}`);
       socket.destroy()
       resolve(false)
     }
 
-    socket.setTimeout(1000)
+    socket.setTimeout(5000)
     socket.on('error', onError)
-    socket.on('timeout', onError)
+    socket.on('timeout', () => onError('timeout'))
 
-    socket.connect(port, 'localhost', () => {
+    socket.connect(port, host, () => {
+      console.log(`Readiness check SUCCESS for ${host}:${port}`);
       socket.destroy()
       resolve(true)
     })
@@ -30,104 +103,134 @@ export async function isContainerReady(port: number): Promise<boolean> {
 }
 
 export async function deployContainer(formData: FormData) {
-  const image = formData.get('image') as string
-  const postId = formData.get('postId') as string
-  const userId = formData.get('userId') as string
-  const actionType = formData.get('actionType') as string || 'launch'
-  const internalPort = '3000'
+  const image = formData.get('image') as string;
+  const postId = formData.get('postId') as string;
+  const userId = formData.get('userId') as string;
+  const actionType = formData.get('actionType') as string || 'launch';
+  const internalPort = '3000';
 
   if (!image) {
-    redirect('/error?message=' + encodeURIComponent('Docker image name/URL is required'))
+    redirect('/error?message=' + encodeURIComponent('Docker image name/URL is required'));
   }
 
-  let hostPort = ''
-  let volumeMount = ''
-  let workdir = '/config' // Default to /config for these types of images
-  
+  let hostPort = '';
+  let workdir = '/config';
+
   try {
-    // 1. Determine the correct working directory for the image (for all users)
+    let imageInfo;
     try {
-      const { stdout: inspectStdout } = await execAsync(`docker inspect --format="{{.Config.WorkingDir}}" ${image}`)
-      const trimmedWorkdir = inspectStdout.trim().replace(/^['"]|['"]$/g, '')
-      
-      if (trimmedWorkdir && trimmedWorkdir !== '/') {
-        workdir = trimmedWorkdir
+      imageInfo = await docker.getImage(image).inspect();
+    } catch (e: any) {
+      if (e.statusCode === 404) {
+        console.log(`Pulling image ${image}...`);
+        await new Promise((resolve, reject) => {
+          docker.pull(image, (err: any, stream: any) => {
+            if (err) return reject(err);
+            docker.modem.followProgress(stream, onFinished, onProgress);
+            function onFinished(err: any, output: any) {
+              if (err) return reject(err);
+              resolve(output);
+            }
+            function onProgress(event: any) {}
+          });
+        });
+        imageInfo = await docker.getImage(image).inspect();
       } else {
-        // Fallback to checking for a defined Volume if WorkingDir isn't useful
-        const { stdout: volStdout } = await execAsync(`docker inspect --format="{{json .Config.Volumes}}" ${image}`)
-        const volumes = JSON.parse(volStdout)
-        const volKeys = Object.keys(volumes)
-        if (volKeys.length > 0) {
-          // Prefer /config if it exists, otherwise take the first one
-          workdir = volKeys.includes('/config') ? '/config' : volKeys[0]
+        throw e;
+      }
+    }
+
+    try {
+      const trimmedWorkdir = imageInfo.Config.WorkingDir;
+      if (trimmedWorkdir && trimmedWorkdir !== '/') {
+        workdir = trimmedWorkdir;
+      } else {
+        const volumes = imageInfo.Config.Volumes;
+        if (volumes) {
+          const volKeys = Object.keys(volumes);
+          if (volKeys.length > 0) {
+            workdir = volKeys.includes('/config') ? '/config' : volKeys[0];
+          }
         }
       }
     } catch(e) {
-      console.warn('Could not inspect image, defaulting workdir to /config.')
+      console.warn('Could not determine workdir, defaulting to /config.');
     }
 
-    // 2. Handle persistent session ONLY if logged in
+    let binds: string[] = [];
+
     if (userId && postId) {
-      const localPath = path.join(process.cwd(), 'container_data', userId, postId)
+      const volumeName = `data-${userId}-${postId}`;
       
       if (actionType === 'restart') {
-        fs.rmSync(localPath, { recursive: true, force: true })
-      }
-
-      if (!fs.existsSync(localPath)) {
-        fs.mkdirSync(localPath, { recursive: true })
         try {
-          const { stdout: createStdout } = await execAsync(`docker create ${image}`)
-          const tmpId = createStdout.trim()
-          await execAsync(`docker cp ${tmpId}:${workdir}/. "${localPath}/"`)
-          await execAsync(`docker rm -v ${tmpId}`)
-        } catch (e) {
-          console.error('Failed to extract initial files from image:', e)
+          const volume = docker.getVolume(volumeName);
+          await volume.remove();
+        } catch (e: any) {
+          // Ignore if volume doesn't exist
         }
       }
       
-      volumeMount = `-v "${localPath}:${workdir}"`
+      binds.push(`${volumeName}:${workdir}`);
     }
 
-    // 3. Start the container
-    const runCmd = `docker run -d --shm-size="1gb" -p 0:${internalPort} ${volumeMount} ${image}`
-    const { stdout: runStdout } = await execAsync(runCmd)
-    const containerId = runStdout.trim()
+    const createOptions: Docker.ContainerCreateOptions = {
+      Image: image,
+      HostConfig: {
+        ShmSize: 1024 * 1024 * 1024,
+        Binds: binds,
+        PortBindings: {
+          [`${internalPort}/tcp`]: [{ HostPort: '0' }]
+        }
+      }
+    };
 
-    // 4. Fix permissions for the determined workdir (for all users)
+    const container = await docker.createContainer(createOptions);
+    await container.start();
+
     let permSuccess = false;
     for (let i = 0; i < 5; i++) {
       try {
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        const chmodCmd = `docker exec -u root ${containerId} chmod -R 777 ${workdir}`
-        await execAsync(chmodCmd)
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        const exec = await container.exec({
+          Cmd: ['chmod', '-R', '777', workdir],
+          User: 'root',
+          AttachStdout: true,
+          AttachStderr: true
+        });
+        const execStream = await exec.start({});
+        // Wait briefly for chmod to complete
+        await new Promise(resolve => setTimeout(resolve, 500));
         permSuccess = true;
         break; 
       } catch (permError: any) {
-        console.warn(`Attempt ${i + 1} to fix permissions failed:`, permError.message || permError)
+        console.warn(`Attempt ${i + 1} to fix permissions failed:`, permError.message || permError);
       }
     }
     
     if (!permSuccess) {
-      console.error('Failed to update container permissions after multiple attempts.')
+      console.error('Failed to update container permissions after multiple attempts.');
     }
 
-    // 5. Get assigned port
-    const portCmd = `docker port ${containerId} ${internalPort}`
-    const { stdout: portStdout } = await execAsync(portCmd)
+    const containerInfo = await container.inspect();
+    const networkSettings = containerInfo.NetworkSettings;
+    const ports = networkSettings.Ports;
     
-    const match = portStdout.match(/:(\d+)/)
-    if (!match) throw new Error('Could not determine assigned host port from Docker')
-    hostPort = match[1]
+    if (ports && ports[`${internalPort}/tcp`] && ports[`${internalPort}/tcp`].length > 0) {
+      hostPort = ports[`${internalPort}/tcp`][0].HostPort;
+    } else {
+      throw new Error('Could not determine assigned host port from Docker');
+    }
+
   } catch (error: any) {
-    console.error('Docker Error:', error)
-    redirect('/error?message=' + encodeURIComponent('Docker deployment failed: ' + (error.stderr || error.message)))
+    console.error('Docker Error:', error);
+    redirect('/error?message=' + encodeURIComponent('Docker deployment failed: ' + (error.message || String(error))));
   }
 
   if (postId) {
-    redirect(`/preview?port=${hostPort}&postId=${postId}`)
+    redirect(`/preview?port=${hostPort}&postId=${postId}`);
   } else {
-    redirect(`/preview?port=${hostPort}`)
+    redirect(`/preview?port=${hostPort}`);
   }
 }
 
@@ -137,25 +240,23 @@ export async function killContainer(port: number): Promise<{ success: boolean; m
   }
 
   try {
-    // Find the container ID using the port
-    const findCmd = `docker ps --filter "publish=${port}" --format "{{.ID}}"`
-    const { stdout: containerId } = await execAsync(findCmd)
+    const containers = await docker.listContainers();
+    const containerInfo = containers.find(c => {
+      return c.Ports.some(p => p.PublicPort === Number(port));
+    });
 
-    if (!containerId) {
-      return { success: false, message: `No container found on port ${port}.` }
+    if (!containerInfo) {
+      return { success: false, message: `No container found on port ${port}.` };
     }
 
-    const trimmedId = containerId.trim()
-    // Stop and remove the container
-    const stopCmd = `docker stop ${trimmedId}`
-    await execAsync(stopCmd)
+    const container = docker.getContainer(containerInfo.Id);
     
-    const rmCmd = `docker rm ${trimmedId}`
-    await execAsync(rmCmd)
+    await container.stop();
+    await container.remove();
 
-    return { success: true, message: `Container ${trimmedId} on port ${port} has been stopped and removed.` }
+    return { success: true, message: `Container ${containerInfo.Id.substring(0, 12)} on port ${port} has been stopped and removed.` };
   } catch (error: any) {
-    console.error('Docker Kill Error:', error)
-    return { success: false, message: error.stderr || error.message }
+    console.error('Docker Kill Error:', error);
+    return { success: false, message: error.message || String(error) };
   }
 }

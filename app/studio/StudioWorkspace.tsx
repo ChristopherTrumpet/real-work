@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { publishChallenge } from '@/app/actions/studio'
-import { killContainer, isContainerReady } from '@/app/actions/docker'
+import { killContainer, isContainerReady, getDockerHostIp } from '@/app/actions/docker'
 
 export default function StudioWorkspace() {
   const router = useRouter()
@@ -15,6 +15,15 @@ export default function StudioWorkspace() {
   const [isLeaving, setIsLeaving] = useState(false)
   const [isPublishing, setIsPublishing] = useState(false)
   const [isReady, setIsReady] = useState(false)
+  const [dockerHostIp, setDockerHostIp] = useState('localhost')
+
+  useEffect(() => {
+    async function fetchIp() {
+      const ip = await getDockerHostIp()
+      setDockerHostIp(ip)
+    }
+    fetchIp()
+  }, [])
 
   useEffect(() => {
     if (!port) return
@@ -188,7 +197,7 @@ export default function StudioWorkspace() {
              </div>
           ) : (
             <iframe 
-              src={`http://localhost:${port}`} 
+              src={`http://${dockerHostIp}:${port}`} 
               className="w-full h-full border-none"
               title="Studio Workspace"
             />

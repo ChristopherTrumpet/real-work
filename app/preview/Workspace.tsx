@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import DraggableWindow from '@/components/DraggableWindow'
-import { killContainer, isContainerReady } from '@/app/actions/docker'
+import { killContainer, isContainerReady, getDockerHostIp } from '@/app/actions/docker'
 import { submitCompletion, submitRating, submitComment } from '@/app/actions/preview'
 
 export default function PreviewWorkspace({ post, comments }: { post?: any, comments?: any[] }) {
@@ -14,9 +14,18 @@ export default function PreviewWorkspace({ post, comments }: { post?: any, comme
   const [port, setPort] = useState<string | null>(null)
   const [isLeaving, setIsLeaving] = useState(false)
   const [isReady, setIsReady] = useState(false)
+  const [dockerHostIp, setDockerHostIp] = useState('localhost')
   
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [rating, setRating] = useState<number>(0)
+
+  useEffect(() => {
+    async function fetchIp() {
+      const ip = await getDockerHostIp()
+      setDockerHostIp(ip)
+    }
+    fetchIp()
+  }, [])
 
   useEffect(() => {
     setPort(initialPort)
@@ -154,7 +163,7 @@ export default function PreviewWorkspace({ post, comments }: { post?: any, comme
             <div className="mt-4 border-t border-zinc-200 dark:border-zinc-800 pt-6">
               <h3 className="font-bold text-lg mb-4">Comments</h3>
               
-              <form action={submitComment.bind(null, post.id)} className="flex flex-col gap-2 mb-6">
+              <form action={async (formData) => { await submitComment(post.id, formData); }} className="flex flex-col gap-2 mb-6">
                 <textarea 
                   name="body" 
                   placeholder="Leave a comment..." 
@@ -201,7 +210,7 @@ export default function PreviewWorkspace({ post, comments }: { post?: any, comme
                </div>
             ) : (
               <iframe 
-                src={`http://localhost:${port}`} 
+                src={`http://${dockerHostIp}:${port}`} 
                 className="w-full h-full border-none"
                 title="Active Workspace"
               />
