@@ -7,6 +7,7 @@ import { ChevronRight, GitBranch, Code, LayoutTemplate, Settings, Play } from 'l
 import { fetchGitHubRepos, fetchRepoTree, fetchFileContent } from '@/app/actions/github'
 import { parseFunctionHeaders } from '@/app/actions/ast'
 import { buildChallengeContainer } from '@/app/actions/builder'
+import { signInWithGitHub } from '@/app/actions/auth'
 import Editor from 'react-simple-code-editor'
 import { highlight, languages } from 'prismjs'
 import 'prismjs/components/prism-clike'
@@ -57,19 +58,43 @@ export default function NewChallengeWizard() {
 
   const [isDeploying, setIsDeploying] = useState(false)
 
+  const [isGitHubLinked, setIsGitHubLinked] = useState(false)
+
   useEffect(() => {
     loadRepos()
+    checkGitHubLink()
   }, [])
+
+  const checkGitHubLink = async () => {
+    try {
+      const { data: { session } } = await (await import('@/utils/supabase/client')).createClient().auth.getSession()
+      if (session?.provider_token) {
+        setIsGitHubLinked(true)
+      }
+    } catch (e) {}
+  }
 
   const loadRepos = async (url?: string) => {
     setIsLoadingRepos(true)
     try {
       const data = await fetchGitHubRepos(url)
       setRepos(data)
+      if (data && data.length > 0) {
+        setIsGitHubLinked(true)
+      }
     } catch (e) {
       console.error(e)
     } finally {
       setIsLoadingRepos(false)
+    }
+  }
+
+  const handleLinkGitHub = async () => {
+    try {
+      const url = await signInWithGitHub()
+      if (url) window.location.href = url
+    } catch (e: any) {
+      alert('Failed to link GitHub: ' + e.message)
     }
   }
 
@@ -101,6 +126,10 @@ export default function NewChallengeWizard() {
     }
   }
 
+  const handleInsertBoilerplate = (header: {name: string, signature: string, boilerplate: string}) => {
+    setGoldCode(prev => prev ? prev + '\n\n' + header.boilerplate : header.boilerplate)
+  }
+
   const handleDeploy = async () => {
     setIsDeploying(true)
     try {
@@ -112,8 +141,8 @@ export default function NewChallengeWizard() {
         details
       })
       if (result.success) {
-        // Post deployment logic (redirect to Studio with the built container ready to finalize)
-        router.push(`/studio?port=${result.port}&containerId=${result.containerId}&draft=true`)
+        // Redirect to the new Vercel-like preview details page
+        router.push(`/preview/${result.postId}?port=${result.port}&containerId=${result.containerId}`)
       } else {
         alert('Deployment failed: ' + result.error)
       }
@@ -175,7 +204,15 @@ export default function NewChallengeWizard() {
         {/* Step 1: Repo */}
         {step === 1 && (
           <div className="bg-background border border-border rounded-xl shadow-sm p-6 sm:p-10 animate-in fade-in slide-in-from-bottom-4">
-            <h2 className="text-xl font-semibold mb-6">Import Git Repository</h2>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-semibold">Import Git Repository</h2>
+              {!isGitHubLinked && (
+                <Button variant="outline" size="sm" onClick={handleLinkGitHub} className="gap-2">
+                  <GitBranch className="size-4" />
+                  Link GitHub Account
+                </Button>
+              )}
+            </div>
             <div className="flex gap-3 mb-8">
               <input 
                 type="text" 
@@ -265,10 +302,15 @@ export default function NewChallengeWizard() {
                       </h3>
                       {scrapedHeaders.length > 0 ? (
                         <div className="space-y-2">
-                          {scrapedHeaders.map((h, i) => (
-                            <div key={i} className="text-xs font-mono bg-background border border-border p-2 rounded text-primary">
+                          {scrapedHeaders.map((h: any, i) => (
+                            <button 
+                              key={i} 
+                              onClick={() => handleInsertBoilerplate(h)}
+                              className="w-full text-left text-xs font-mono bg-background border border-border p-2 rounded text-primary hover:border-primary/50 transition-colors"
+                              title="Click to insert boilerplate"
+                            >
                               {h.signature}
-                            </div>
+                            </button>
                           ))}
                         </div>
                       ) : (
