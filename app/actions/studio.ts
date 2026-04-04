@@ -9,6 +9,21 @@ import path from 'path'
 
 const execAsync = promisify(exec)
 
+type ServerClient = Awaited<ReturnType<typeof createClient>>
+
+/**
+ * posts.user_id FK targets profiles(id), not auth.users. If the signup trigger
+ * never ran (or failed), publishing would error. Create a minimal row when missing.
+ */
+async function ensureAuthUserProfile(supabase: ServerClient, userId: string) {
+  const { data } = await supabase.from('profiles').select('id').eq('id', userId).maybeSingle()
+  if (data) return null
+
+  const { error } = await supabase.from('profiles').insert({ id: userId })
+  if (error?.code === '23505') return null
+  return error
+}
+
 export async function startStudioSession() {
 // ... same as before
   const supabase = await createClient()
@@ -87,6 +102,18 @@ export async function publishChallenge(formData: FormData) {
   } catch (error: any) {
     console.error('Docker commit error:', error)
     redirect('/error?message=' + encodeURIComponent('Failed to save container image: ' + (error.stderr || error.message)))
+  }
+
+  const profileErr = await ensureAuthUserProfile(supabase, user.id)
+  if (profileErr) {
+    redirect(
+      '/error?message=' +
+        encodeURIComponent(
+          'Could not create your profile row: ' +
+            profileErr.message +
+            ' (posts require a matching profiles row).'
+        )
+    )
   }
 
   const { error } = await supabase.from('posts').insert({
