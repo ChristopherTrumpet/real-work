@@ -32,7 +32,8 @@ create table posts (
   benchmark_language text check (benchmark_language in ('c', 'typescript', 'rust', 'java', 'python')),
   benchmark_gold_code text,
   benchmark_test_cases jsonb,
-  benchmark_timeout_ms integer default 10000
+  benchmark_timeout_ms integer default 10000,
+  is_draft boolean default false
 );
 
 alter table posts enable row level security;

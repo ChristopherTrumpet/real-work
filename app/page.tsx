@@ -50,14 +50,12 @@ export default async function Home() {
             Explore library
           </a>
           {user ? (
-            <form action={startStudioSession} className="w-full sm:w-auto">
-              <button
-                type="submit"
-                className="inline-flex h-11 w-full items-center justify-center rounded-full border border-primary/45 bg-black/35 px-6 text-sm font-semibold text-primary shadow-[inset_0_1px_0_0_rgba(255,255,255,0.12)] backdrop-blur-md transition-colors hover:border-primary/55 hover:bg-black/48 dark:border-primary/40 dark:bg-neutral-950/55 dark:text-primary dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)] dark:hover:bg-neutral-950/68 dark:hover:border-primary/50 sm:w-auto"
-              >
-                Create challenge
-              </button>
-            </form>
+            <Link
+              href="/new"
+              className="inline-flex h-11 w-full items-center justify-center rounded-full border border-primary/45 bg-black/35 px-6 text-sm font-semibold text-primary shadow-[inset_0_1px_0_0_rgba(255,255,255,0.12)] backdrop-blur-md transition-colors hover:border-primary/55 hover:bg-black/48 dark:border-primary/40 dark:bg-neutral-950/55 dark:text-primary dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)] dark:hover:bg-neutral-950/68 dark:hover:border-primary/50 sm:w-auto"
+            >
+              Create challenge
+            </Link>
           ) : (
             <Link
               href="/login"

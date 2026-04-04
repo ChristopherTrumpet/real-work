@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { createClient } from '@/utils/supabase/server'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { HeaderUserMenu } from '@/components/header-user-menu'
+import { HeaderMaxWidthContainer } from '@/components/header-max-width-container'
 
 export async function SiteHeader() {
   const supabase = await createClient()
@@ -19,7 +20,7 @@ export async function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background">
-      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
+      <HeaderMaxWidthContainer>
         <div className="flex min-w-0 items-center gap-4">
           <Link
             href="/"
@@ -62,7 +63,7 @@ export async function SiteHeader() {
             </>
           )}
         </div>
-      </div>
+      </HeaderMaxWidthContainer>
     </header>
   )
 }
