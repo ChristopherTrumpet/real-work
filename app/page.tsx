@@ -29,40 +29,24 @@ export default async function Home() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center bg-zinc-50 dark:bg-black p-8 sm:p-12 md:p-24">
-      {/* Header section */}
-      <div className="w-full max-w-5xl flex justify-between items-center mb-12">
-        <div className="flex items-center gap-6">
-          <h1 className="text-3xl font-extrabold tracking-tight">DockerHub Lite</h1>
-          {user && (
-            <form action={startStudioSession}>
-              <button type="submit" className="px-4 py-2 bg-green-600 text-white rounded-full text-sm font-bold hover:bg-green-700 transition-colors shadow-sm">
-                + Create Challenge
-              </button>
-            </form>
-          )}
-        </div>
-        <div className="flex gap-4 items-center">
-          {user ? (
-            <>
-              <span className="text-sm text-gray-600 dark:text-gray-400 hidden sm:inline">Hi, {user.email}</span>
-              <Link href="/profile" className="px-4 py-2 bg-zinc-800 text-white rounded-full text-sm font-medium hover:bg-zinc-700 transition-colors">
-                Profile
-              </Link>
-            </>
-          ) : (
-            <Link href="/login" className="px-4 py-2 bg-blue-600 text-white rounded-full text-sm font-medium hover:bg-blue-500 transition-colors">
-              Sign In
-            </Link>
-          )}
-        </div>
+    <main className="flex min-h-screen flex-col items-center bg-background p-6 sm:p-10 md:p-16">
+      <div className="w-full max-w-5xl flex flex-wrap justify-end items-center gap-3 mb-10">
+        {user && (
+          <form action={startStudioSession}>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-emerald-600 text-white rounded-full text-sm font-bold hover:bg-emerald-700 transition-colors shadow-sm"
+            >
+              + Create Challenge
+            </button>
+          </form>
+        )}
       </div>
-
 
       <div className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-3 gap-8">
         {/* Sidebar / Deployment Form */}
         <div className="md:col-span-1">
-          <div className="sticky top-8 p-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm">
+          <div className="sticky top-8 p-6 bg-card border border-border rounded-2xl shadow-sm">
             <h2 className="text-xl font-bold mb-4">Deploy Image</h2>
             <form action={deployContainer} className="flex flex-col gap-4">
               <div className="flex flex-col gap-2">
@@ -105,22 +89,17 @@ export default async function Home() {
             {containers && containers.length > 0 ? (
               containers.map((container) => {
                 const hasSession = activeSessions.has(container.id)
-                const diff = (container as { difficulty?: string }).difficulty ?? 'medium'
-                const completions = Number((container as { number_of_completions?: number }).number_of_completions ?? 0)
-                const ratingsCount = Number((container as { ratings_count?: number }).ratings_count ?? 0)
-                const avgRating = (container as { average_rating?: number | null }).average_rating
-                const tags = (container as { tags?: string[] | null }).tags ?? []
-                const diffStyles: Record<string, string> = {
-                  easy: 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300',
-                  medium: 'bg-amber-500/15 text-amber-900 dark:text-amber-200',
-                  hard: 'bg-rose-500/15 text-rose-800 dark:text-rose-300',
-                }
                 return (
-                  <div key={container.id} className="group p-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl hover:border-zinc-400 dark:hover:border-zinc-500 transition-all shadow-sm">
+                  <div key={container.id} className="group p-6 bg-card border border-border rounded-2xl hover:border-muted-foreground/30 transition-all shadow-sm">
                     <div className="flex flex-col sm:flex-row justify-between items-start mb-4 gap-4">
                       <div className="flex flex-col gap-2">
                         <div className="flex items-center gap-2">
-                          <h3 className="text-lg font-bold group-hover:text-blue-600 transition-colors">{container.title}</h3>
+                          <Link
+                            href={`/challenge/${container.id}`}
+                            className="text-lg font-bold text-foreground group-hover:text-primary transition-colors"
+                          >
+                            {container.title}
+                          </Link>
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
                             container.difficulty === 'easy' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
                             container.difficulty === 'hard' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
@@ -191,14 +170,23 @@ export default async function Home() {
                       </div>
                     </div>
                     
-                    <div className="flex items-center justify-between pt-4 border-t border-zinc-100 dark:border-zinc-800">
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center text-[10px] font-bold">
+                    <div className="flex items-center justify-between pt-4 border-t border-border">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-[10px] font-bold shrink-0">
                           {(container.profiles?.username?.[0] || 'U').toUpperCase()}
                         </div>
-                        <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
-                          {container.profiles?.full_name || container.profiles?.username || 'Anonymous'}
-                        </span>
+                        {container.profiles?.username ? (
+                          <Link
+                            href={`/u/${encodeURIComponent(container.profiles.username)}`}
+                            className="text-xs font-medium text-muted-foreground hover:text-primary truncate"
+                          >
+                            {container.profiles?.full_name || container.profiles.username}
+                          </Link>
+                        ) : (
+                          <span className="text-xs font-medium text-muted-foreground truncate">
+                            {container.profiles?.full_name || 'Anonymous'}
+                          </span>
+                        )}
                       </div>
                       <code className="text-[10px] bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded text-zinc-500">
                         image: {container.content_url}

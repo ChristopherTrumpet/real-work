@@ -158,10 +158,12 @@ create trigger trg_post_ratings_aggregate
   for each row execute function public.sync_post_rating_aggregate();
 
 -- 4e. Comments on challenges (cascade when post or author profile is removed)
+--     parent_id null = top-level; replies reference another row on the same post (enforced below).
 create table post_comments (
   id uuid primary key default gen_random_uuid(),
   post_id uuid not null references public.posts(id) on delete cascade,
   user_id uuid not null references public.profiles(id) on delete cascade,
+  parent_id uuid references public.post_comments(id) on delete cascade,
   body text not null check (length(trim(body)) > 0 and char_length(body) <= 10000),
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
   updated_at timestamp with time zone default timezone('utc'::text, now()) not null
@@ -191,8 +193,32 @@ create trigger trg_post_comments_updated_at
   before update on public.post_comments
   for each row execute function public.touch_post_comments_updated_at();
 
+create or replace function public.enforce_comment_parent_same_post()
+returns trigger
+language plpgsql
+as $$
+begin
+  if new.parent_id is null then
+    return new;
+  end if;
+  if not exists (
+    select 1 from public.post_comments pc
+    where pc.id = new.parent_id and pc.post_id = new.post_id
+  ) then
+    raise exception 'parent comment must belong to the same post';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_post_comments_parent_same_post on public.post_comments;
+create trigger trg_post_comments_parent_same_post
+  before insert or update on public.post_comments
+  for each row execute function public.enforce_comment_parent_same_post();
+
 create index if not exists idx_post_comments_post_created on public.post_comments (post_id, created_at desc);
 create index if not exists idx_post_comments_user_id on public.post_comments (user_id);
+create index if not exists idx_post_comments_parent_id on public.post_comments (parent_id);
 
 grant select on public.post_comments to anon, authenticated;
 grant insert, update, delete on public.post_comments to authenticated;
@@ -359,6 +385,8 @@ grant execute on function public.delete_user() to authenticated;
 --     foreign key (post_id) references public.posts(id) on delete cascade;
 --
 -- Comments: create table post_comments and policies from section 4e in this file.
+-- Replies: add parent_id to post_comments (see section 4e) and triggers idx_post_comments_parent_id.
+--   alter table public.post_comments add column if not exists parent_id uuid references public.post_comments(id) on delete cascade;
 --
 -- Then create indexes, views, grants, and triggers from this file as required.
 -- -----------------------------------------------------------------------------

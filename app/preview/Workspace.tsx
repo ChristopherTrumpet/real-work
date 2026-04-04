@@ -154,7 +154,13 @@ export default function PreviewWorkspace({ post, comments }: { post?: any, comme
             <div className="mt-4 border-t border-zinc-200 dark:border-zinc-800 pt-6">
               <h3 className="font-bold text-lg mb-4">Comments</h3>
               
-              <form action={submitComment.bind(null, post.id)} className="flex flex-col gap-2 mb-6">
+              <form
+                action={async (formData) => {
+                  await submitComment(post.id, formData)
+                  router.refresh()
+                }}
+                className="flex flex-col gap-2 mb-6"
+              >
                 <textarea 
                   name="body" 
                   placeholder="Leave a comment..." 

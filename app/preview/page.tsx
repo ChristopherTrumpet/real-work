@@ -26,7 +26,7 @@ export default async function PreviewPage(props: {
     if (postData) {
       const { data: commentsData } = await supabase
         .from('post_comments')
-        .select('*, profiles!user_id(username, avatar_url)')
+        .select('*, profiles!user_id(username, full_name, avatar_url)')
         .eq('post_id', postId)
         .order('created_at', { ascending: false });
       
@@ -36,7 +36,7 @@ export default async function PreviewPage(props: {
 
   return (
     <Suspense fallback={<div className="flex items-center justify-center h-screen bg-zinc-900 text-white font-bold">Loading Workspace...</div>}>
-      <PreviewWorkspace post={post} comments={comments} />
+      <PreviewWorkspace post={post} comments={comments ?? undefined} />
     </Suspense>
   )
 }

@@ -9,6 +9,8 @@ export type DifficultyWheelProps = {
   easy: number
   medium: number
   hard: number
+  /** Label under the total in the center (e.g. "Solved", "Created") */
+  centerLabel?: string
   /** Outer diameter in px */
   size?: number
   /** Inner hole as fraction of radius (0–1) */
@@ -19,6 +21,7 @@ export default function DifficultyWheel({
   easy,
   medium,
   hard,
+  centerLabel = 'Solved',
   size = 168,
   holeRatio = 0.58,
 }: DifficultyWheelProps) {
@@ -46,7 +49,7 @@ export default function DifficultyWheel({
           height: size,
           background,
         }}
-        aria-label={`Solved: ${easy} easy, ${medium} medium, ${hard} hard`}
+        aria-label={`${centerLabel}: ${easy} easy, ${medium} medium, ${hard} hard`}
       >
         <div
           className="absolute flex flex-col items-center justify-center rounded-full bg-white text-zinc-900 dark:bg-zinc-900 dark:text-zinc-50"
@@ -56,7 +59,7 @@ export default function DifficultyWheel({
         >
           <span className="text-2xl font-bold tabular-nums leading-none">{total}</span>
           <span className="mt-1 text-[10px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-            Solved
+            {centerLabel}
           </span>
         </div>
       </div>

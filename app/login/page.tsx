@@ -10,17 +10,20 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [isSignup, setIsSignup] = useState(false)
 
-  const handleAction = async (formData: FormData, action: typeof login) => {
+  const handleAction = async (
+    formData: FormData,
+    action: (fd: FormData) => Promise<{ error?: string; message?: string } | void>
+  ) => {
     setIsLoading(true)
     setMessage('')
     
     try {
       const result = await action(formData)
       
-      if (result?.error) {
+      if (result && 'error' in result && result.error) {
         setMessage(result.error)
         setIsError(true)
-      } else if (result?.message) {
+      } else if (result && 'message' in result && typeof result.message === 'string') {
         setMessage(result.message)
         setIsError(false)
       }

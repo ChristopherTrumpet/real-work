@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/utils/supabase/server'
 import { updateProfile, deleteAccount } from './actions'
+import DifficultyWheel from '@/components/DifficultyWheel'
 
 export default async function ProfilePage() {
   const supabase = await createClient()
@@ -24,13 +25,14 @@ export default async function ProfilePage() {
   const { data: rateStats } = await supabase.from('user_rating_statistics').select('*').eq('user_id', user.id).maybeSingle()
 
   return (
-    <main className="flex min-h-screen flex-col items-center bg-zinc-50 dark:bg-black p-8 sm:p-12 md:p-24 text-zinc-900 dark:text-zinc-100">
-      
-      {/* Header section */}
+    <main className="flex min-h-screen flex-col items-center bg-background p-8 sm:p-12 md:p-24 text-foreground">
       <div className="w-full max-w-3xl flex justify-between items-center mb-12">
         <h1 className="text-3xl font-extrabold tracking-tight">Your Profile</h1>
-        <Link href="/" className="px-4 py-2 bg-zinc-200 dark:bg-zinc-800 text-zinc-800 dark:text-white rounded-full text-sm font-medium hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-colors">
-          Back to Dashboard
+        <Link
+          href="/"
+          className="px-4 py-2 rounded-full text-sm font-medium bg-muted text-foreground hover:bg-muted/80 transition-colors"
+        >
+          Back to feed
         </Link>
       </div>
 
@@ -38,34 +40,42 @@ export default async function ProfilePage() {
         
         {/* Left Column: Stats */}
         <div className="md:col-span-1 flex flex-col gap-6">
-          <div className="p-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm">
-            <h2 className="text-xl font-bold mb-4">Statistics</h2>
-            <div className="flex flex-col gap-4">
-              <div className="flex justify-between items-center">
-                <span className="text-zinc-500">Uploads</span>
-                <span className="font-bold">{uploadsCount || 0}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-zinc-500">Challenges Solved</span>
-                <span className="font-bold">{probStats?.problems_solved || 0}</span>
-              </div>
-              <div className="flex justify-between items-center text-sm border-t border-zinc-100 dark:border-zinc-800 pt-2">
-                <span className="text-green-600">Easy</span>
-                <span>{probStats?.easy_solved || 0}</span>
-              </div>
+          <div className="p-6 bg-card border border-border rounded-2xl shadow-sm">
+            <h2 className="text-xl font-bold mb-4 text-foreground">Statistics</h2>
+            <div className="flex flex-col gap-4 mb-6">
               <div className="flex justify-between items-center text-sm">
-                <span className="text-yellow-600">Medium</span>
-                <span>{probStats?.medium_solved || 0}</span>
+                <span className="text-muted-foreground">Uploads</span>
+                <span className="font-bold text-foreground">{uploadsCount || 0}</span>
               </div>
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-red-600">Hard</span>
-                <span>{probStats?.hard_solved || 0}</span>
+              <div className="flex justify-between items-center text-sm border-t border-border pt-3">
+                <span className="text-muted-foreground">Ratings given</span>
+                <span className="font-bold text-foreground">{rateStats?.ratings_given || 0}</span>
               </div>
-              <div className="flex justify-between items-center mt-2 border-t border-zinc-100 dark:border-zinc-800 pt-4">
-                <span className="text-zinc-500">Ratings Given</span>
-                <span className="font-bold">{rateStats?.ratings_given || 0}</span>
-              </div>
+              {rateStats?.average_stars_given != null && (
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-muted-foreground">Avg stars you give</span>
+                  <span className="font-bold text-foreground">
+                    {Number(rateStats.average_stars_given).toFixed(2)}
+                  </span>
+                </div>
+              )}
             </div>
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">Solved by difficulty</h3>
+            <DifficultyWheel
+              easy={Number(probStats?.easy_solved ?? 0)}
+              medium={Number(probStats?.medium_solved ?? 0)}
+              hard={Number(probStats?.hard_solved ?? 0)}
+              centerLabel="Solved"
+              size={148}
+            />
+            {profile?.username && (
+              <Link
+                href={`/u/${encodeURIComponent(profile.username)}`}
+                className="mt-4 block text-center text-xs text-primary font-medium hover:underline"
+              >
+                View public profile →
+              </Link>
+            )}
           </div>
           
           <form action="/auth/signout" method="post">
