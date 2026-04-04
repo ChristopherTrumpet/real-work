@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useLayoutEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 
 import { FlickeringGrid } from '@/components/ui/flickering-grid'
 
@@ -21,18 +21,40 @@ export function HeroSection({ children }: HeroSectionProps) {
   const [displayText, setDisplayText] = useState('')
   const [skipTyping, setSkipTyping] = useState(false)
 
-  useLayoutEffect(() => {
-    if (typeof window === 'undefined') return
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      setDisplayText(HERO_HEADLINES[0])
-      setSkipTyping(true)
-    }
-  }, [])
-
+  /**
+   * One effect avoids a race: useLayoutEffect used to set skipTyping while the first
+   * useEffect(commit with skipTyping=false) could still run and start timers, then get
+   * torn down — leaving an empty headline on some browsers / strict mode.
+   *
+   * prefers-reduced-motion: we don't do per-character typing (a11y); we rotate full lines
+   * so the hero still feels alive vs a single frozen string.
+   */
   useEffect(() => {
-    if (skipTyping) return
+    const reduced =
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
     let cancelled = false
+
+    if (reduced) {
+      setSkipTyping(true)
+      let phraseI = 0
+      setDisplayText(HERO_HEADLINES[phraseI])
+
+      const intervalId = window.setInterval(() => {
+        if (cancelled) return
+        phraseI = (phraseI + 1) % HERO_HEADLINES.length
+        setDisplayText(HERO_HEADLINES[phraseI])
+      }, 4200)
+
+      return () => {
+        cancelled = true
+        window.clearInterval(intervalId)
+      }
+    }
+
+    setSkipTyping(false)
+
     let phraseI = 0
     let chars = 0
     let phase: 'typing' | 'pause' | 'deleting' = 'typing'
@@ -48,10 +70,10 @@ export function HeroSection({ children }: HeroSectionProps) {
         if (chars < p.length) {
           chars++
           setDisplayText(p.slice(0, chars))
-          timeoutId = setTimeout(step, 44)
+          timeoutId = window.setTimeout(step, 44)
         } else {
           phase = 'pause'
-          timeoutId = setTimeout(step, 2400)
+          timeoutId = window.setTimeout(step, 2400)
         }
       } else if (phase === 'pause') {
         phase = 'deleting'
@@ -60,10 +82,10 @@ export function HeroSection({ children }: HeroSectionProps) {
         if (chars > 0) {
           chars--
           setDisplayText(p.slice(0, chars))
-          timeoutId = setTimeout(step, 26)
+          timeoutId = window.setTimeout(step, 26)
         } else {
           phraseI++
-          timeoutId = setTimeout(() => {
+          timeoutId = window.setTimeout(() => {
             phase = 'typing'
             step()
           }, 380)
@@ -72,11 +94,12 @@ export function HeroSection({ children }: HeroSectionProps) {
     }
 
     step()
+
     return () => {
       cancelled = true
-      if (timeoutId !== undefined) clearTimeout(timeoutId)
+      if (timeoutId !== undefined) window.clearTimeout(timeoutId)
     }
-  }, [skipTyping])
+  }, [])
 
   const ariaLabel = HERO_HEADLINES.join(' ')
 
@@ -111,6 +134,7 @@ export function HeroSection({ children }: HeroSectionProps) {
         <h1
           className="mx-auto min-h-[5rem] max-w-3xl text-center text-3xl font-semibold tracking-tight text-foreground [text-shadow:0_1px_0_color-mix(in_oklab,var(--background)_72%,transparent),0_0_2.5rem_color-mix(in_oklab,var(--background)_55%,transparent)] sm:mx-0 sm:min-h-[6rem] sm:text-left sm:text-4xl md:min-h-[7rem] md:text-5xl md:leading-[1.15]"
           aria-label={ariaLabel}
+          aria-live={skipTyping ? 'polite' : 'off'}
         >
           <span className="text-foreground">{displayText}</span>
           {!skipTyping && (
