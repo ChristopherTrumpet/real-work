@@ -18,38 +18,30 @@ export async function SiteHeader() {
           >
             real_work
           </Link>
-          <nav className="hidden sm:flex items-center gap-1 text-sm">
-            <Link
-              href="/search"
-              className="rounded-md px-2 py-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-            >
-              Search
-            </Link>
-          </nav>
         </div>
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <ThemeToggle />
+          {user && (
+            <span className="hidden md:inline text-xs text-muted-foreground truncate max-w-[140px]">
+              {user.email}
+            </span>
+          )}
           <Link
             href="/search"
-            className="sm:hidden rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
+            className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             aria-label="Search"
           >
             <svg className="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
           </Link>
-          <ThemeToggle />
           {user ? (
-            <>
-              <span className="hidden md:inline text-xs text-muted-foreground truncate max-w-[140px]">
-                {user.email}
-              </span>
-              <Link
-                href="/profile"
-                className="rounded-full bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-              >
-                Profile
-              </Link>
-            </>
+            <Link
+              href="/profile"
+              className="rounded-full bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+            >
+              Profile
+            </Link>
           ) : (
             <Link
               href="/login"
