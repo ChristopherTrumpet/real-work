@@ -26,7 +26,13 @@ create table posts (
   number_of_completions bigint not null default 0 check (number_of_completions >= 0),
   average_rating numeric(4, 2) check (average_rating is null or (average_rating >= 1 and average_rating <= 5)),
   ratings_count integer not null default 0 check (ratings_count >= 0),
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  
+  -- Benchmark Configuration
+  benchmark_language text check (benchmark_language in ('c', 'typescript', 'rust', 'java', 'python')),
+  benchmark_gold_code text,
+  benchmark_test_cases jsonb,
+  benchmark_timeout_ms integer default 10000
 );
 
 alter table posts enable row level security;
