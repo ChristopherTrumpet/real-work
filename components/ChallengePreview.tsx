@@ -42,9 +42,9 @@ export default function ChallengePreview({ post, currentUserId }: { post: any, c
 
   const handleOpenWorkspace = () => {
     if (port) {
-      // Use 127.0.0.1 instead of localhost for better browser security handling.
-      // Switched to HTTP (port 6080) to avoid self-signed certificate warnings.
-      const url = `http://127.0.0.1:${port}/vnc.html?autoconnect=true`
+      // linuxserver/webtop uses port 3000 for its web interface.
+      // It provides a full desktop experience with VS Code and Firefox pre-launched via autostart.
+      const url = `http://127.0.0.1:${port}`
       window.open(url, '_blank')
     }
   }

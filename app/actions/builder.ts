@@ -32,93 +32,87 @@ async function runBuildProcess(buildId: string, imageName: string, config: any, 
   const { repoUrl, templateId, benchmarkLang, goldCode, details } = config
   const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'builder-'))
   const supabase = await createClient()
-  const arch = os.arch() === 'arm64' ? 'arm64' : 'amd64'
 
   try {
-    appendLog(buildId, `Generating project environment...`, true)
+    appendLog(buildId, `Generating high-performance workspace...`, true)
     
+    // 1. Language-specific setup commands
     let setupCommands = []
+    let extraApt = []
+    
     if (benchmarkLang === 'python') {
-      setupCommands.push('apt-get install -y --no-install-recommends python3 python3-pip')
+      extraApt.push('python3', 'python3-pip')
     } else if (templateId === 'node' || benchmarkLang === 'typescript' || benchmarkLang === 'javascript') {
-      setupCommands.push('curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && apt-get install -y --no-install-recommends nodejs')
+      setupCommands.push('curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && apt-get install -y nodejs')
     } else if (benchmarkLang === 'rust') {
       setupCommands.push('curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y')
     } else if (benchmarkLang === 'java') {
-      setupCommands.push('apt-get install -y --no-install-recommends openjdk-17-jdk')
+      extraApt.push('openjdk-17-jdk')
     }
 
-    // Generate startup script
-    const startupScript = `#!/bin/bash
-export DISPLAY=:1
-export HOME=/root
-mkdir -p /root/.vnc
-echo "password" | vncpasswd -f > /root/.vnc/passwd
-chmod 600 /root/.vnc/passwd
-
-# Clean up old locks
-vncserver -kill :1 || true
-rm -rf /tmp/.X1-lock /tmp/.X11-unix/X1
-
-# Start VNC server
-vncserver :1 -geometry 1280x800 -depth 24
-
-# Start Window Manager
-startxfce4 &
-
-# Wait for X
-sleep 3
-
-# Launch VS Code with the project folder
-code --no-sandbox --user-data-dir /root/.vscode-data /root/project &
-
-# Launch Firefox
-firefox &
-
-# Start noVNC proxy
-/usr/share/novnc/utils/novnc_proxy --vnc localhost:5901 --listen 6080
+    // 2. Generate scripts and Dockerfile using WebTop base
+    if (templateId === 'node' || templateId === 'static') {
+      const scriptContent = `#!/bin/bash
+# Wait for the web server to be ready (port 3000 for node, port 8080 for static/python simple server)
+TARGET_PORT=${templateId === 'node' ? '3000' : '8080'}
+while ! curl -s http://localhost:$TARGET_PORT > /dev/null; do
+  sleep 2
+done
+firefox http://localhost:$TARGET_PORT &
 `
-    await fs.writeFile(path.join(tmpDir, 'entrypoint.sh'), startupScript)
+      await fs.writeFile(path.join(tmpDir, 'start_browser.sh'), scriptContent)
+    }
 
     const dockerfileContent = `
-FROM ubuntu:22.04
+FROM lscr.io/linuxserver/webtop:ubuntu-xfce
 
 ENV DEBIAN_FRONTEND=noninteractive
-ENV HOME=/root
 
-# Install essential desktop components and Firefox PPA requirements
-RUN apt-get update && apt-get install -y --no-install-recommends \\
-    xfce4 xfce4-panel xfce4-session xfwm4 xfce4-terminal \\
-    tightvncserver \\
-    novnc websockify \\
-    curl git wget ca-certificates \\
-    dbus-x11 x11-xserver-utils \\
-    software-properties-common gpg-agent \\
-    && add-apt-repository -y ppa:mozillateam/ppa \\
-    && echo 'Package: *\\nPin: release o=LP-PPA-mozillateam\\nPin-Priority: 1001' > /etc/apt/preferences.d/mozilla-firefox \\
-    && apt-get update && apt-get install -y --no-install-recommends firefox \\
+# Install common tools and VS Code
+RUN apt-get update && apt-get install -y \\
+    git curl wget gpg sudo \\
+    ${extraApt.join(' ')} \\
+    && ARCH=$(dpkg --print-architecture) \\
+    && if [ "$ARCH" = "arm64" ]; then VSCODE_ARCH="linux-deb-arm64"; else VSCODE_ARCH="linux-deb-x64"; fi \\
+    && wget -qO vscode.deb "https://code.visualstudio.com/sha/download?build=stable&os=\${VSCODE_ARCH}" \\
+    && apt-get install -y ./vscode.deb \\
+    && rm vscode.deb \\
     && rm -rf /var/lib/apt/lists/*
 
-# Install VS Code
-RUN wget -q -O code.deb https://update.code.visualstudio.com/latest/linux-deb-${arch === 'arm64' ? 'arm64' : 'x64'}/stable \\
-    && apt-get update && apt-get install -y ./code.deb \\
-    && rm code.deb && rm -rf /var/lib/apt/lists/*
+# Template specific setup
+${setupCommands.map(cmd => `RUN ${cmd}`).join('\n')}
 
-# Language specific setup
-${setupCommands.map(cmd => `RUN apt-get update && ${cmd} && rm -rf /var/lib/apt/lists/*`).join('\n')}
-
-# Clone repo
-WORKDIR /root/project
+# Clone repo into /workspace (Avoiding /config volume issues)
+WORKDIR /workspace
 RUN git clone ${repoUrl} . || echo "Clone failed"
+RUN chown -R abc:abc /workspace
 
-# Setup entrypoint
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+# Setup Autostart for VS Code and Firefox
+RUN mkdir -p /etc/xdg/autostart && \\
+    echo "[Desktop Entry]\\n\\
+Type=Application\\n\\
+Name=VS Code\\n\\
+Exec=code /workspace --no-sandbox --disable-gpu\\n\\
+Terminal=false" > /etc/xdg/autostart/vscode.desktop && \\
+    echo "[Desktop Entry]\\n\\
+Type=Application\\n\\
+Name=Firefox\\n\\
+Exec=bash /dockerstartup/start_browser.sh\\n\\
+Terminal=false" > /etc/xdg/autostart/firefox.desktop
 
-# Expose noVNC port
-EXPOSE 6080
+${(templateId === 'node' || templateId === 'static') ? `
+COPY start_browser.sh /dockerstartup/start_browser.sh
+RUN chmod +x /dockerstartup/start_browser.sh
+` : ''}
 
-ENTRYPOINT ["/entrypoint.sh"]
+${templateId === 'static' ? `
+RUN echo '#!/bin/bash\\n\
+cd /workspace && python3 -m http.server 8080 &\\n' > /dockerstartup/run_server.sh && \\
+chmod +x /dockerstartup/run_server.sh
+` : ''}
+
+# Final permission ensure
+RUN chown -R abc:abc /workspace && chmod -R 777 /workspace
 `
     await fs.writeFile(path.join(tmpDir, 'Dockerfile'), dockerfileContent)
 
@@ -136,16 +130,8 @@ ENTRYPOINT ["/entrypoint.sh"]
     
     await new Promise((resolve, reject) => {
       const child = spawn('docker', ['build', '-t', imageName, tmpDir])
-      
-      child.stdout.on('data', (data) => {
-        const line = data.toString().trim()
-        if (line) appendLog(buildId, line)
-      })
-      child.stderr.on('data', (data) => {
-        const line = data.toString().trim()
-        if (line) appendLog(buildId, `[build-stderr] ${line}`)
-      })
-      
+      child.stdout.on('data', (data) => appendLog(buildId, data.toString().trim()))
+      child.stderr.on('data', (data) => appendLog(buildId, `[build-stderr] ${data.toString().trim()}`))
       child.on('close', (code) => {
         if (code === 0) resolve(true)
         else reject(new Error(`Docker build failed with code ${code}`))
@@ -156,7 +142,7 @@ ENTRYPOINT ["/entrypoint.sh"]
 
     // 5. Spin up container
     appendLog(buildId, `Provisioning live workspace...`, true)
-    const internalPort = '6080'
+    const internalPort = '3000'
     const runCmd = `docker run -d --shm-size="1gb" -p ${internalPort} ${imageName}`
     const { stdout: runStdout } = await execAsync(runCmd)
     const containerId = runStdout.trim()
@@ -180,6 +166,8 @@ ENTRYPOINT ["/entrypoint.sh"]
       throw new Error('Failed to retrieve host port mapping.')
     }
     
+    appendLog(buildId, `Container ready on port ${hostPort}`)
+
     // 7. Save to DB
     appendLog(buildId, `Finalizing database records...`, true)
     const { data: postData, error } = await supabase.from('posts').insert({
