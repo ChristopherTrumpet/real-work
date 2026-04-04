@@ -193,7 +193,13 @@ export default function StudioWorkspace() {
              <div className="absolute inset-0 flex flex-col items-center justify-center text-zinc-500">
                  <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-6" />
                  <h3 className="text-xl font-bold mb-2 text-zinc-800 dark:text-zinc-200">Booting Studio Environment...</h3>
-                 <p className="text-sm italic">This may take a moment.</p>
+                 <p className="text-sm italic mb-4">This may take a moment.</p>
+                 <div className="bg-zinc-800 p-4 rounded-lg text-xs font-mono text-zinc-400 border border-zinc-700 max-w-sm">
+                   <p className="mb-1 text-zinc-200">Network Diagnostic:</p>
+                   <p>Target IP: {dockerHostIp}</p>
+                   <p>Target Port: {port}</p>
+                   <p className="mt-2 text-[10px] text-zinc-500 italic">If this takes {'>'}1 min, try opening: <br/> http://{dockerHostIp}:{port} <br/> manually in a new tab.</p>
+                 </div>
              </div>
           ) : (
             <iframe 
