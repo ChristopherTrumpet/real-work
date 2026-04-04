@@ -3,6 +3,7 @@ import { createClient } from '@/utils/supabase/server'
 import { deployContainer } from './actions/docker'
 import { startStudioSession } from './actions/studio'
 import { ChallengeFeedCard, type ChallengeFeedItem } from '@/components/ChallengeFeedCard'
+import { HeroSection } from '@/components/home/HeroSection'
 import fs from 'fs'
 import path from 'path'
 
@@ -36,50 +37,36 @@ export default async function Home() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Hero */}
-      <section className="relative border-b border-border">
-        <div
-          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_120%_80%_at_50%_-40%,color-mix(in_oklab,var(--color-primary)_22%,transparent),transparent_55%)]"
-          aria-hidden
-        />
-        <div className="relative mx-auto max-w-6xl px-4 pb-16 pt-12 sm:px-6 sm:pb-20 sm:pt-16 md:pb-24 md:pt-20">
-          <p className="mb-3 text-center text-xs font-semibold uppercase tracking-[0.2em] text-primary sm:text-left">
-            Live environments · Real debugging
-          </p>
-          <h1 className="mx-auto max-w-3xl text-center text-3xl font-semibold tracking-tight text-foreground sm:mx-0 sm:text-left sm:text-4xl md:text-5xl md:leading-[1.1]">
-            Practice like it ships.{' '}
-            <span className="text-muted-foreground">Solve challenges inside real containers.</span>
-          </h1>
-          <p className="mx-auto mt-5 max-w-2xl text-center text-base leading-relaxed text-muted-foreground sm:mx-0 sm:text-left sm:text-lg">
-            Browse community challenges, launch isolated workspaces, and track progress—all from one place.
-          </p>
-          <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row sm:flex-wrap sm:justify-start">
-            <a
-              href="#library"
-              className="inline-flex h-11 w-full items-center justify-center rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 sm:w-auto"
-            >
-              Explore library
-            </a>
-            {user ? (
-              <form action={startStudioSession} className="w-full sm:w-auto">
-                <button
-                  type="submit"
-                  className="inline-flex h-11 w-full items-center justify-center rounded-full border border-primary/40 bg-primary/5 px-6 text-sm font-semibold text-primary transition-colors hover:bg-primary/10 sm:w-auto"
-                >
-                  Create challenge
-                </button>
-              </form>
-            ) : (
-              <Link
-                href="/login"
+      <HeroSection>
+        <p className="mx-auto mt-5 max-w-2xl text-center text-base leading-relaxed text-muted-foreground sm:mx-0 sm:text-left sm:text-lg">
+          Browse community challenges, launch isolated workspaces, and track progress—all from one place.
+        </p>
+        <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row sm:flex-wrap sm:justify-start">
+          <a
+            href="#library"
+            className="inline-flex h-11 w-full items-center justify-center rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 sm:w-auto"
+          >
+            Explore library
+          </a>
+          {user ? (
+            <form action={startStudioSession} className="w-full sm:w-auto">
+              <button
+                type="submit"
                 className="inline-flex h-11 w-full items-center justify-center rounded-full border border-primary/40 bg-primary/5 px-6 text-sm font-semibold text-primary transition-colors hover:bg-primary/10 sm:w-auto"
               >
-                Sign in to create
-              </Link>
-            )}
-          </div>
+                Create challenge
+              </button>
+            </form>
+          ) : (
+            <Link
+              href="/login"
+              className="inline-flex h-11 w-full items-center justify-center rounded-full border border-primary/40 bg-primary/5 px-6 text-sm font-semibold text-primary transition-colors hover:bg-primary/10 sm:w-auto"
+            >
+              Sign in to create
+            </Link>
+          )}
         </div>
-      </section>
+      </HeroSection>
 
       {/* Metrics */}
       <section className="border-b border-border bg-muted/30">
