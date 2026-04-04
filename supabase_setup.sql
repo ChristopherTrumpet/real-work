@@ -29,7 +29,7 @@ create table posts (
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
   
   -- Benchmark Configuration
-  benchmark_language text check (benchmark_language in ('c', 'typescript', 'rust', 'java', 'python')),
+  benchmark_language text check (benchmark_language in ('c', 'typescript', 'rust', 'java', 'python', 'javascript')),
   benchmark_gold_code text,
   benchmark_test_cases jsonb,
   benchmark_timeout_ms integer default 10000,

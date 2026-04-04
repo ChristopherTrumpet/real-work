@@ -25,7 +25,7 @@ export interface BenchmarkResult {
 
 export interface BenchmarkOptions {
   containerId: string
-  language: 'c' | 'typescript' | 'rust' | 'java' | 'python'
+  language: 'c' | 'typescript' | 'rust' | 'java' | 'python' | 'javascript'
   userCode: string
   goldCode: string
   testCases: string[] // Array of stdin inputs for each test
@@ -51,7 +51,7 @@ def compile_code(lang, filepath, outpath):
         subprocess.run(['javac', filepath], check=True, capture_output=True)
         classname = os.path.basename(filepath).replace('.java', '')
         return ['java', classname]
-    elif lang == 'typescript':
+    elif lang == 'typescript' or lang == 'javascript':
         return ['npx', 'ts-node', filepath]
     elif lang == 'python':
         return ['python3', filepath]
@@ -177,7 +177,8 @@ const extensions: Record<string, string> = {
   typescript: 'ts',
   rust: 'rs',
   java: 'java',
-  python: 'py'
+  python: 'py',
+  javascript: 'js'
 }
 
 export async function runBenchmark(options: BenchmarkOptions): Promise<BenchmarkResult> {

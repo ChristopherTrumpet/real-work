@@ -3,13 +3,13 @@
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { Rocket, ExternalLink, GitBranch, CheckCircle2, AlertCircle, Info, Code, Play } from 'lucide-react'
+import { Rocket, ExternalLink, GitBranch, CheckCircle2, AlertCircle, Info, Code, Play, Trash2 } from 'lucide-react'
 import { BenchmarkResult } from '@/lib/evaluator'
 import BenchmarkResults from '@/components/BenchmarkResults'
 import { evaluateChallengeAction } from '@/app/actions/benchmark'
-import { killContainer } from '@/app/actions/docker'
+import { deleteChallenge } from '@/app/actions/delete-challenge'
 
-export default function ChallengePreview({ post }: { post: any }) {
+export default function ChallengePreview({ post, currentUserId }: { post: any, currentUserId?: string }) {
   const router = useRouter()
   const [status, setStatus] = useState<'deploying' | 'ready' | 'error'>('deploying')
   const [port, setPort] = useState<string | null>(null)
@@ -21,10 +21,11 @@ export default function ChallengePreview({ post }: { post: any }) {
   const [userCode, setUserCode] = useState('')
   const [showEval, setShowEval] = useState(false)
 
+  // Deletion
+  const [isDeleting, setIsDeleting] = useState(false)
+  const isOwner = currentUserId === post.user_id
+
   useEffect(() => {
-    // In a real app, we'd poll the status or use a WebSocket
-    // For this prototype, we'll assume it's ready after a simulated delay 
-    // or if the URL already has port/containerId from the wizard redirect
     const urlParams = new URLSearchParams(window.location.search)
     const p = urlParams.get('port')
     const c = urlParams.get('containerId')
@@ -34,15 +35,31 @@ export default function ChallengePreview({ post }: { post: any }) {
       setContainerId(c)
       setStatus('ready')
     } else {
-      setTimeout(() => setStatus('ready'), 3000)
+      const timer = setTimeout(() => setStatus('ready'), 3000)
+      return () => clearTimeout(timer)
     }
   }, [])
 
   const handleOpenWorkspace = () => {
     if (port) {
-      // Kasm usually uses https on 6901, but we've mapped it.
-      // We might need to handle the self-signed cert or use a proxy.
-      window.open(`https://localhost:${port}/?password=password`, '_blank')
+      // Use 127.0.0.1 instead of localhost for better browser security handling.
+      // Switched to HTTP (port 6080) to avoid self-signed certificate warnings.
+      const url = `http://127.0.0.1:${port}/vnc.html?autoconnect=true`
+      window.open(url, '_blank')
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!confirm('Are you sure you want to delete this challenge? This will remove all data and the Docker image.')) {
+      return
+    }
+
+    setIsDeleting(true)
+    try {
+      await deleteChallenge(post.id)
+    } catch (e: any) {
+      alert('Failed to delete: ' + e.message)
+      setIsDeleting(false)
     }
   }
 
@@ -86,7 +103,7 @@ export default function ChallengePreview({ post }: { post: any }) {
                   {status}
                 </span>
                 <span className="text-muted-foreground text-xs">•</span>
-                <span className="text-muted-foreground text-xs">Production Deployment</span>
+                <span className="text-muted-foreground text-xs">Environment Ready</span>
               </div>
               <h1 className="text-4xl font-black tracking-tight">{post.title}</h1>
               <p className="text-muted-foreground max-w-2xl">{post.description}</p>
@@ -94,9 +111,20 @@ export default function ChallengePreview({ post }: { post: any }) {
             
             <div className="flex items-center gap-3">
               <Button variant="outline" onClick={() => router.push('/')}>Dashboard</Button>
-              <Button onClick={handleOpenWorkspace} disabled={status !== 'ready'}>
+              {isOwner && (
+                <Button 
+                  variant="destructive" 
+                  onClick={handleDelete} 
+                  disabled={isDeleting}
+                  className="gap-2"
+                >
+                  <Trash2 className="size-4" />
+                  {isDeleting ? 'Deleting...' : 'Delete'}
+                </Button>
+              )}
+              <Button onClick={handleOpenWorkspace} disabled={status !== 'ready'} className="shadow-lg shadow-primary/20">
                 <ExternalLink className="mr-2 size-4" />
-                Open Workspace
+                Launch IDE & Browser
               </Button>
             </div>
           </div>
@@ -108,19 +136,46 @@ export default function ChallengePreview({ post }: { post: any }) {
         {/* Left Column: Details & Benchmark */}
         <div className="lg:col-span-2 space-y-12">
           
+          {/* Connection Info Card */}
+          {status === 'ready' && (
+            <section className="bg-blue-500/5 border border-blue-500/20 rounded-2xl p-6 animate-in fade-in slide-in-from-top-4 duration-500 shadow-sm">
+              <div className="flex gap-4">
+                <div className="shrink-0 w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-500">
+                  <Info className="size-6" />
+                </div>
+                <div className="space-y-2">
+                  <h3 className="font-bold text-blue-700 dark:text-blue-300">Workspace is Ready</h3>
+                  <p className="text-sm text-blue-600/80 dark:text-blue-400/80 leading-relaxed">
+                    Your Linux Desktop environment is live. We've pre-launched <strong>VS Code</strong> with the project files and <strong>Firefox</strong> for previewing the site.
+                  </p>
+                  <div className="flex flex-wrap gap-4 pt-2">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-blue-700 dark:text-blue-300">
+                      <span className="w-5 h-5 rounded bg-blue-500 text-white flex items-center justify-center text-[10px]">1</span>
+                      Direct Link (No Login)
+                    </div>
+                    <div className="flex items-center gap-2 text-xs font-semibold text-blue-700 dark:text-blue-300">
+                      <span className="w-5 h-5 rounded bg-blue-500 text-white flex items-center justify-center text-[10px]">2</span>
+                      VS Code & Firefox Ready
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
+
           {/* Deployment Status Card */}
-          <section className="bg-card border border-border rounded-2xl overflow-hidden">
+          <section className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
             <div className="p-6 border-b border-border flex items-center justify-between bg-muted/5">
               <h2 className="font-bold flex items-center gap-2">
                 <Rocket className="size-4 text-primary" />
-                Deployment Status
+                System Logs
               </h2>
               {status === 'ready' && <CheckCircle2 className="size-5 text-green-500" />}
             </div>
             <div className="p-6 space-y-6">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <div className="space-y-1">
-                  <span className="text-[10px] font-bold uppercase text-muted-foreground">Runtime</span>
+                  <span className="text-[10px] font-bold uppercase text-muted-foreground">Language</span>
                   <p className="text-sm font-mono">{post.benchmark_language || 'linux'}</p>
                 </div>
                 <div className="space-y-1">
@@ -128,21 +183,20 @@ export default function ChallengePreview({ post }: { post: any }) {
                   <p className="text-sm font-semibold capitalize">{post.difficulty}</p>
                 </div>
                 <div className="space-y-1">
-                  <span className="text-[10px] font-bold uppercase text-muted-foreground">Container ID</span>
-                  <p className="text-sm font-mono truncate">{containerId?.substring(0,12) || '---'}</p>
+                  <span className="text-[10px] font-bold uppercase text-muted-foreground">Status</span>
+                  <p className="text-sm font-semibold text-green-500">Live</p>
                 </div>
                 <div className="space-y-1">
-                  <span className="text-[10px] font-bold uppercase text-muted-foreground">Exposed Port</span>
+                  <span className="text-[10px] font-bold uppercase text-muted-foreground">Port</span>
                   <p className="text-sm font-mono">{port || '---'}</p>
                 </div>
               </div>
 
               <div className="p-4 bg-muted/20 border border-border rounded-xl space-y-3 font-mono text-xs overflow-x-auto">
-                <p className="text-green-500">[12:00:01] Preparing Kasm environment...</p>
-                <p className="text-green-500">[12:00:05] Cloning repository into /home/kasm-user/workspace...</p>
-                <p className="text-green-500">[12:00:12] Injecting performance benchmark library...</p>
-                <p className="text-green-500">[12:00:15] Configuring VS Code server extensions...</p>
-                <p className="text-blue-500">[12:00:18] Container successfully started on port {port}.</p>
+                <p className="text-green-500">[SYSTEM] Provisioning Kasm workspace engine...</p>
+                <p className="text-green-500">[GIT] Source code cloned to /home/kasm-user/project</p>
+                <p className="text-green-500">[IDE] VS Code server initialized</p>
+                <p className="text-blue-500">[NET] HTTPS listener active on 127.0.0.1:{port}</p>
                 <p className="animate-pulse">_</p>
               </div>
             </div>
@@ -160,7 +214,7 @@ export default function ChallengePreview({ post }: { post: any }) {
             {showEval && (
               <div className="space-y-4 animate-in fade-in slide-in-from-top-4 duration-300">
                 <p className="text-sm text-muted-foreground">Paste your implementation below to benchmark it against the gold standard algorithm in the live environment.</p>
-                <div className="border border-border rounded-2xl overflow-hidden bg-card">
+                <div className="border border-border rounded-2xl overflow-hidden bg-card shadow-sm">
                   <div className="p-3 bg-muted/30 border-b border-border flex items-center justify-between">
                     <div className="flex gap-2">
                       <div className="w-3 h-3 rounded-full bg-red-500/20 border border-red-500/40" />
@@ -240,7 +294,7 @@ export default function ChallengePreview({ post }: { post: any }) {
             </div>
           </div>
 
-          <Button variant="secondary" className="w-full h-12 rounded-xl font-bold" onClick={() => router.push('/')}>
+          <Button variant="secondary" className="w-full h-12 rounded-xl font-bold shadow-sm" onClick={() => router.push('/')}>
             Back to Dashboard
           </Button>
         </div>

@@ -15,13 +15,15 @@ export default async function PreviewPostPage(props: {
     .eq('id', id)
     .single()
 
+  const { data: { user } } = await supabase.auth.getUser()
+
   if (!post) {
     notFound()
   }
 
   return (
     <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Loading Preview...</div>}>
-      <ChallengePreview post={post} />
+      <ChallengePreview post={post} currentUserId={user?.id} />
     </Suspense>
   )
 }
