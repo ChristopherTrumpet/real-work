@@ -12,8 +12,11 @@ export async function SiteHeader() {
     <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-md">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
         <div className="flex items-center gap-4 min-w-0">
-          <Link href="/" className="text-lg font-bold tracking-tight text-foreground shrink-0">
-            DockerHub Lite
+          <Link
+            href="/"
+            className="font-mono text-lg font-bold tracking-tight text-foreground shrink-0"
+          >
+            real_work
           </Link>
           <nav className="hidden sm:flex items-center gap-1 text-sm">
             <Link

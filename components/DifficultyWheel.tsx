@@ -13,7 +13,7 @@ export type DifficultyWheelProps = {
   centerLabel?: string
   /** Outer diameter in px */
   size?: number
-  /** Inner hole as fraction of radius (0–1) */
+  /** Center cutout: inner diameter ≈ (1 − holeRatio) × outer. Lower values = thinner colored ring (e.g. 0.35–0.45). */
   holeRatio?: number
 }
 
@@ -23,7 +23,7 @@ export default function DifficultyWheel({
   hard,
   centerLabel = 'Solved',
   size = 168,
-  holeRatio = 0.58,
+  holeRatio = 0.38,
 }: DifficultyWheelProps) {
   const total = easy + medium + hard
   const easyDeg = total > 0 ? (easy / total) * 360 : 0
@@ -41,52 +41,54 @@ export default function DifficultyWheel({
   const holePct = `${holeRatio * 50}%`
 
   return (
-    <div className="flex flex-col sm:flex-row items-center gap-6">
-      <div
-        className="relative shrink-0 rounded-full shadow-inner ring-1 ring-black/5 dark:ring-white/10"
-        style={{
-          width: size,
-          height: size,
-          background,
-        }}
-        aria-label={`${centerLabel}: ${easy} easy, ${medium} medium, ${hard} hard`}
-      >
+    <div className="@container difficulty-wheel w-full min-w-0">
+      <div className="flex w-full min-w-0 flex-col items-center gap-4 @[22rem]:flex-row @[22rem]:items-center @[22rem]:justify-center @[22rem]:gap-6">
         <div
-          className="absolute flex flex-col items-center justify-center rounded-full bg-white text-zinc-900 dark:bg-zinc-900 dark:text-zinc-50"
+          className="relative shrink-0 rounded-full shadow-inner ring-1 ring-black/5 dark:ring-white/10"
           style={{
-            inset: holePct,
+            width: size,
+            height: size,
+            maxWidth: '100%',
           }}
+          aria-label={`${centerLabel}: ${easy} easy, ${medium} medium, ${hard} hard`}
         >
-          <span className="text-2xl font-bold tabular-nums leading-none">{total}</span>
-          <span className="mt-1 text-[10px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-            {centerLabel}
-          </span>
+          <div
+            className="absolute flex flex-col items-center justify-center rounded-full bg-card text-card-foreground"
+            style={{
+              inset: holePct,
+            }}
+          >
+            <span className="text-2xl font-bold tabular-nums leading-none">{total}</span>
+            <span className="mt-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+              {centerLabel}
+            </span>
+          </div>
         </div>
-      </div>
 
-      <ul className="flex flex-col gap-2 text-sm min-w-[9rem]">
-        <li className="flex items-center justify-between gap-4">
-          <span className="flex items-center gap-2 font-medium text-zinc-700 dark:text-zinc-300">
-            <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: EASY }} />
-            Easy
-          </span>
-          <span className="tabular-nums text-zinc-900 dark:text-zinc-100">{easy}</span>
-        </li>
-        <li className="flex items-center justify-between gap-4">
-          <span className="flex items-center gap-2 font-medium text-zinc-700 dark:text-zinc-300">
-            <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: MEDIUM }} />
-            Medium
-          </span>
-          <span className="tabular-nums text-zinc-900 dark:text-zinc-100">{medium}</span>
-        </li>
-        <li className="flex items-center justify-between gap-4">
-          <span className="flex items-center gap-2 font-medium text-zinc-700 dark:text-zinc-300">
-            <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: HARD }} />
-            Hard
-          </span>
-          <span className="tabular-nums text-zinc-900 dark:text-zinc-100">{hard}</span>
-        </li>
-      </ul>
+        <ul className="flex w-full min-w-0 max-w-[11rem] flex-col gap-2 text-sm @[22rem]:max-w-[9rem]">
+          <li className="flex min-w-0 items-center justify-between gap-3">
+            <span className="flex min-w-0 items-center gap-2 font-medium text-foreground">
+              <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: EASY }} />
+              Easy
+            </span>
+            <span className="shrink-0 tabular-nums text-foreground">{easy}</span>
+          </li>
+          <li className="flex min-w-0 items-center justify-between gap-3">
+            <span className="flex min-w-0 items-center gap-2 font-medium text-foreground">
+              <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: MEDIUM }} />
+              Medium
+            </span>
+            <span className="shrink-0 tabular-nums text-foreground">{medium}</span>
+          </li>
+          <li className="flex min-w-0 items-center justify-between gap-3">
+            <span className="flex min-w-0 items-center gap-2 font-medium text-foreground">
+              <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: HARD }} />
+              Hard
+            </span>
+            <span className="shrink-0 tabular-nums text-foreground">{hard}</span>
+          </li>
+        </ul>
+      </div>
     </div>
   )
 }
