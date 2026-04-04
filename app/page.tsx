@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { createClient } from '@/utils/supabase/server'
 import { deployContainer } from './actions/docker'
+import { startStudioSession } from './actions/studio'
 import fs from 'fs'
 import path from 'path'
 
@@ -31,7 +32,16 @@ export default async function Home() {
     <main className="flex min-h-screen flex-col items-center bg-zinc-50 dark:bg-black p-8 sm:p-12 md:p-24">
       {/* Header section */}
       <div className="w-full max-w-5xl flex justify-between items-center mb-12">
-        <h1 className="text-3xl font-extrabold tracking-tight">DockerHub Lite</h1>
+        <div className="flex items-center gap-6">
+          <h1 className="text-3xl font-extrabold tracking-tight">DockerHub Lite</h1>
+          {user && (
+            <form action={startStudioSession}>
+              <button type="submit" className="px-4 py-2 bg-green-600 text-white rounded-full text-sm font-bold hover:bg-green-700 transition-colors shadow-sm">
+                + Create Challenge
+              </button>
+            </form>
+          )}
+        </div>
         <div className="flex gap-4 items-center">
           {user ? (
             <>
@@ -47,6 +57,7 @@ export default async function Home() {
           )}
         </div>
       </div>
+
 
       <div className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-3 gap-8">
         {/* Sidebar / Deployment Form */}
