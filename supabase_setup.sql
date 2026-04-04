@@ -276,11 +276,14 @@ grant select on public.user_rating_statistics to anon, authenticated;
 create or replace function public.handle_new_user()
 returns trigger as $$
 begin
-  insert into public.profiles (id, full_name, username)
+  insert into public.profiles (id, full_name, username, avatar_url, website, bio)
   values (
     new.id, 
     new.raw_user_meta_data->>'full_name',
-    new.raw_user_meta_data->>'username'
+    new.raw_user_meta_data->>'username',
+    new.raw_user_meta_data->>'avatar_url',
+    new.raw_user_meta_data->>'website',
+    new.raw_user_meta_data->>'bio'
   );
   return new;
 end;
@@ -290,6 +293,19 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
+
+-- 10. Function to completely delete a user account from auth.users (cascades to profiles and posts)
+create or replace function public.delete_user()
+returns void
+language plpgsql
+security definer
+as $$
+begin
+  delete from auth.users where id = auth.uid();
+end;
+$$;
+
+grant execute on function public.delete_user() to authenticated;
 
 -- -----------------------------------------------------------------------------
 -- Existing database migrations (run in order as needed):

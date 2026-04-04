@@ -3,6 +3,8 @@
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 
+import { redirect } from 'next/navigation'
+
 export async function updateProfile(formData: FormData) {
   const supabase = await createClient()
 
@@ -29,4 +31,26 @@ export async function updateProfile(formData: FormData) {
   }
 
   revalidatePath('/profile')
+}
+
+export async function deleteAccount() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) {
+    throw new Error('User not found')
+  }
+
+  // Call the database function to delete the user completely
+  const { error } = await supabase.rpc('delete_user')
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  // Sign out cleanly
+  await supabase.auth.signOut()
+  
+  revalidatePath('/')
+  redirect('/login')
 }
