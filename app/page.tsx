@@ -118,35 +118,41 @@ export default async function Home() {
                 return (
                   <div key={container.id} className="group p-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl hover:border-zinc-400 dark:hover:border-zinc-500 transition-all shadow-sm">
                     <div className="flex flex-col sm:flex-row justify-between items-start mb-4 gap-4">
-                      <div>
-                        <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex flex-col gap-2">
+                        <div className="flex items-center gap-2">
                           <h3 className="text-lg font-bold group-hover:text-blue-600 transition-colors">{container.title}</h3>
-                          <span className={`text-[10px] font-bold uppercase tracking-wider rounded-full px-2 py-0.5 ${diffStyles[diff] ?? diffStyles.medium}`}>
-                            {diff}
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
+                            container.difficulty === 'easy' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                            container.difficulty === 'hard' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+                            'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                          }`}>
+                            {container.difficulty || 'medium'}
                           </span>
                         </div>
-                        <p className="text-sm text-zinc-500 mt-1">{container.description}</p>
-                        {tags.length > 0 && (
-                          <div className="mt-2 flex flex-wrap gap-1.5">
-                            {tags.map((tag, i) => (
-                              <span
-                                key={`${container.id}-${tag}-${i}`}
-                                className="rounded-md bg-zinc-100 px-2 py-0.5 text-[10px] font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
-                              >
-                                {tag}
+                        <p className="text-sm text-zinc-500 line-clamp-2">{container.description}</p>
+                        
+                        {container.tags && container.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {container.tags.map((tag: string, i: number) => (
+                              <span key={i} className="text-[10px] bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 px-2 py-0.5 rounded">
+                                #{tag}
                               </span>
                             ))}
                           </div>
                         )}
-                        <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400 flex flex-wrap gap-x-3 gap-y-1">
-                          <span>{completions.toLocaleString()} completions</span>
-                          {ratingsCount > 0 && avgRating != null && (
-                            <span>
-                              ★ {Number(avgRating).toFixed(1)} <span className="text-zinc-400">({ratingsCount})</span>
-                            </span>
-                          )}
-                        </p>
+                        
+                        <div className="flex items-center gap-4 mt-2 text-xs text-zinc-500 font-medium">
+                          <span className="flex items-center gap-1">
+                            <svg className="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
+                            {container.average_rating ? Number(container.average_rating).toFixed(1) : 'New'} ({container.ratings_count || 0})
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            {container.number_of_completions || 0} solves
+                          </span>
+                        </div>
                       </div>
+
                       
                       {/* Container Actions */}
                       <div className="flex gap-2 w-full sm:w-auto">

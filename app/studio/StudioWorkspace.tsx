@@ -131,8 +131,19 @@ export default function StudioWorkspace() {
                 <option value="easy">Easy</option>
                 <option value="medium">Medium</option>
                 <option value="hard">Hard</option>
-                <option value="insane">Insane</option>
               </select>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <label htmlFor="tags" className="text-sm font-bold text-zinc-700 dark:text-zinc-300">Tags (comma separated)</label>
+              <input 
+                id="tags" 
+                name="tags" 
+                type="text" 
+                placeholder="e.g. linux, web, crypto" 
+                disabled={isPublishing || isLeaving}
+                className="w-full border border-zinc-300 dark:border-zinc-700 p-3 rounded-lg bg-zinc-50 dark:bg-zinc-950 focus:ring-2 focus:ring-blue-500 outline-none transition-all" 
+              />
             </div>
 
             <div className="flex flex-col gap-2 flex-grow">
