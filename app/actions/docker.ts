@@ -54,15 +54,30 @@ export async function deployContainer(formData: FormData) {
         fs.rmSync(localPath, { recursive: true, force: true })
       }
 
-      // Determine the container's working directory
+      // Determine the container's working directory or persistent volume
       try {
         const { stdout: inspectStdout } = await execAsync(`docker inspect --format="{{.Config.WorkingDir}}" ${image}`)
         const trimmedWorkdir = inspectStdout.trim().replace(/^['"]|['"]$/g, '')
+        
         if (trimmedWorkdir && trimmedWorkdir !== '/') {
           workdir = trimmedWorkdir
+        } else {
+          // If no working dir, check if the image has a defined Volume (like /config for desktop containers)
+          try {
+            const { stdout: volStdout } = await execAsync(`docker inspect --format="{{.Config.Volumes}}" ${image}`)
+            const volMatch = volStdout.match(/map\[([^:]+):/)
+            if (volMatch && volMatch[1]) {
+              workdir = volMatch[1]
+            } else {
+              workdir = '/config'
+            }
+          } catch(ve) {
+            workdir = '/config'
+          }
         }
       } catch(e) {
-        console.warn('Could not inspect image for workdir, defaulting to /app')
+        console.warn('Could not inspect image for workdir, defaulting to /config')
+        workdir = '/config'
       }
 
       // If the local folder doesn't exist, create it and extract initial files
@@ -90,11 +105,23 @@ export async function deployContainer(formData: FormData) {
     const containerId = runStdout.trim()
 
     // 3. Fix permissions
-    try {
-      const chmodCmd = `docker exec -u root ${containerId} chmod -R 777 ${workdir}`
-      await execAsync(chmodCmd)
-    } catch (permError) {
-      console.warn('Failed to update container permissions:', permError)
+    // We retry a few times because the container might take a second to fully start
+    let permSuccess = false;
+    for (let i = 0; i < 5; i++) {
+      try {
+        // Wait 1 second before each attempt
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        const chmodCmd = `docker exec -u root ${containerId} chmod -R 777 ${workdir}`
+        await execAsync(chmodCmd)
+        permSuccess = true;
+        break; // Success, exit loop
+      } catch (permError: any) {
+        console.warn(`Attempt ${i + 1} to fix permissions failed:`, permError.message || permError)
+      }
+    }
+    
+    if (!permSuccess) {
+      console.error('Failed to update container permissions after multiple attempts.')
     }
 
     // 4. Get assigned port
