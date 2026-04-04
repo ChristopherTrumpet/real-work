@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { createClient } from '@/utils/supabase/server'
 import { updateProfile, deleteAccount } from './actions'
 import DifficultyWheel from '@/components/DifficultyWheel'
+import { DeleteChallengeButton } from '@/components/profile/delete-challenge-button'
 
 export default async function ProfilePage() {
   const supabase = await createClient()
@@ -23,6 +24,14 @@ export default async function ProfilePage() {
   const { count: uploadsCount } = await supabase.from('posts').select('*', { count: 'exact', head: true }).eq('user_id', user.id)
   const { data: probStats } = await supabase.from('user_problem_statistics').select('*').eq('user_id', user.id).maybeSingle()
   const { data: rateStats } = await supabase.from('user_rating_statistics').select('*').eq('user_id', user.id).maybeSingle()
+
+  const { data: myChallenges } = await supabase
+    .from('posts')
+    .select('id, title, difficulty, created_at')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+
+  const challenges = myChallenges ?? []
 
   const inputClass =
     'w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
@@ -159,6 +168,56 @@ export default async function ProfilePage() {
             </button>
           </form>
         </div>
+
+        <section className="rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8 md:col-span-3">
+          <h2 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">Published challenges</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Challenges you have published. Deleting removes them for everyone.
+          </p>
+
+          {challenges.length === 0 ? (
+            <p className="mt-6 rounded-xl border border-dashed border-border bg-muted/30 px-4 py-8 text-center text-sm text-muted-foreground">
+              You haven&apos;t published any challenges yet.{' '}
+              <Link href="/" className="font-medium text-primary hover:underline">
+                Create one from the home page
+              </Link>
+              .
+            </p>
+          ) : (
+            <ul className="mt-6 divide-y divide-border">
+              {challenges.map((post) => {
+                const diff = post.difficulty || 'medium'
+                return (
+                  <li key={post.id} className="flex flex-wrap items-center gap-3 py-4 first:pt-0">
+                    <div className="min-w-0 flex-1">
+                      <Link
+                        href={`/challenge/${post.id}`}
+                        className="font-medium text-foreground hover:text-primary hover:underline"
+                      >
+                        {post.title}
+                      </Link>
+                      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                        <span className="rounded-full bg-muted px-2 py-0.5 font-medium uppercase text-muted-foreground">
+                          {diff}
+                        </span>
+                        <span>
+                          {post.created_at
+                            ? new Date(post.created_at).toLocaleDateString(undefined, {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric',
+                              })
+                            : ''}
+                        </span>
+                      </div>
+                    </div>
+                    <DeleteChallengeButton postId={post.id} title={post.title} />
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </section>
         </div>
       </div>
     </main>

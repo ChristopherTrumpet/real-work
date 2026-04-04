@@ -51,6 +51,33 @@ export async function deleteAccount() {
   // Sign out cleanly
   await supabase.auth.signOut()
   
-  revalidatePath('/')
-  redirect('/login')
+  revalidatePath('/', 'layout')
+  redirect('/')
+}
+
+export async function deletePublishedChallenge(formData: FormData) {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    redirect('/login')
+  }
+
+  const postId = (formData.get('postId') as string | null)?.trim()
+  if (!postId) {
+    redirect('/profile')
+  }
+
+  const { error } = await supabase.from('posts').delete().eq('id', postId).eq('user_id', user.id)
+
+  revalidatePath('/profile')
+  revalidatePath('/', 'layout')
+
+  if (error) {
+    console.error('deletePublishedChallenge:', error.message)
+  }
+
+  redirect('/profile')
 }

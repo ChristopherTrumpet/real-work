@@ -1,8 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { login, signup } from './actions'
 import Link from 'next/link'
+import { login, signup } from './actions'
+
+const inputClass =
+  'w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
 
 export default function LoginPage() {
   const [message, setMessage] = useState('')
@@ -16,10 +19,10 @@ export default function LoginPage() {
   ) => {
     setIsLoading(true)
     setMessage('')
-    
+
     try {
       const result = await action(formData)
-      
+
       if (result && 'error' in result && result.error) {
         setMessage(result.error)
         setIsError(true)
@@ -27,142 +30,138 @@ export default function LoginPage() {
         setMessage(result.message)
         setIsError(false)
       }
-    } catch (error) {
-      // Catch any unexpected errors
+    } catch {
+      // redirect() from server action throws; ignore
     } finally {
       setIsLoading(false)
     }
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen py-10 px-4 bg-zinc-50 dark:bg-black text-black dark:text-white">
-      
-      <div className="w-full max-w-md mb-8">
-        <Link href="/" className="text-sm text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors">
-          ← Back to Dashboard
-        </Link>
-      </div>
-
-      <form 
-        className="flex flex-col gap-6 w-full max-w-md p-8 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm"
-      >
-        <h1 className="text-2xl font-extrabold text-center mb-2">
-          {isSignup ? 'Create an Account' : 'Welcome Back'}
-        </h1>
-        
-        {message && (
-          <div className={`p-4 rounded-xl text-sm font-medium ${isError ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800/50' : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800/50'}`}>
-            {message}
-          </div>
-        )}
-        
-        <div className="flex flex-col gap-2">
-          <label htmlFor="email" className="text-sm font-bold text-zinc-700 dark:text-zinc-300">Email Address</label>
-          <input 
-            id="email" 
-            name="email" 
-            type="email" 
-            placeholder="you@example.com"
-            required 
-            className="w-full border border-zinc-300 dark:border-zinc-700 p-3 rounded-lg bg-zinc-50 dark:bg-zinc-950 focus:ring-2 focus:ring-blue-500 outline-none transition-all" 
-          />
-        </div>
-        
-        <div className="flex flex-col gap-2">
-          <label htmlFor="password" className="text-sm font-bold text-zinc-700 dark:text-zinc-300">Password</label>
-          <input 
-            id="password" 
-            name="password" 
-            type="password" 
-            required 
-            className="w-full border border-zinc-300 dark:border-zinc-700 p-3 rounded-lg bg-zinc-50 dark:bg-zinc-950 focus:ring-2 focus:ring-blue-500 outline-none transition-all" 
-          />
-        </div>
-
-        {isSignup && (
-          <>
-            <div className="flex flex-col gap-2">
-              <label htmlFor="username" className="text-sm font-bold text-zinc-700 dark:text-zinc-300">Username</label>
-              <input 
-                id="username" 
-                name="username" 
-                type="text" 
-                required={isSignup}
-                className="w-full border border-zinc-300 dark:border-zinc-700 p-3 rounded-lg bg-zinc-50 dark:bg-zinc-950 focus:ring-2 focus:ring-blue-500 outline-none transition-all" 
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <label htmlFor="full_name" className="text-sm font-bold text-zinc-700 dark:text-zinc-300">Full Name</label>
-              <input 
-                id="full_name" 
-                name="full_name" 
-                type="text" 
-                required={isSignup}
-                className="w-full border border-zinc-300 dark:border-zinc-700 p-3 rounded-lg bg-zinc-50 dark:bg-zinc-950 focus:ring-2 focus:ring-blue-500 outline-none transition-all" 
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <label htmlFor="avatar_url" className="text-sm font-bold text-zinc-700 dark:text-zinc-300">Avatar URL</label>
-              <input 
-                id="avatar_url" 
-                name="avatar_url" 
-                type="url" 
-                required={isSignup}
-                className="w-full border border-zinc-300 dark:border-zinc-700 p-3 rounded-lg bg-zinc-50 dark:bg-zinc-950 focus:ring-2 focus:ring-blue-500 outline-none transition-all" 
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <label htmlFor="website" className="text-sm font-bold text-zinc-700 dark:text-zinc-300">Website</label>
-              <input 
-                id="website" 
-                name="website" 
-                type="url" 
-                required={isSignup}
-                className="w-full border border-zinc-300 dark:border-zinc-700 p-3 rounded-lg bg-zinc-50 dark:bg-zinc-950 focus:ring-2 focus:ring-blue-500 outline-none transition-all" 
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <label htmlFor="bio" className="text-sm font-bold text-zinc-700 dark:text-zinc-300">Bio</label>
-              <textarea 
-                id="bio" 
-                name="bio" 
-                required={isSignup}
-                className="w-full border border-zinc-300 dark:border-zinc-700 p-3 rounded-lg bg-zinc-50 dark:bg-zinc-950 focus:ring-2 focus:ring-blue-500 outline-none transition-all h-20 resize-none" 
-              />
-            </div>
-          </>
-        )}
-        
-        <div className="flex flex-col gap-3 mt-4">
-          {isSignup ? (
-            <button 
-              type="submit" 
-              formAction={(formData) => handleAction(formData, signup)} 
-              disabled={isLoading}
-              className="w-full bg-zinc-900 dark:bg-white dark:text-black text-white p-3 rounded-xl font-bold hover:opacity-90 transition-opacity shadow-lg disabled:opacity-50"
-            >
-              {isLoading ? 'Creating Account...' : 'Sign Up'}
-            </button>
-          ) : (
-            <button 
-              type="submit" 
-              formAction={(formData) => handleAction(formData, login)} 
-              disabled={isLoading}
-              className="w-full bg-blue-600 text-white p-3 rounded-xl font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/20 disabled:opacity-50"
-            >
-              {isLoading ? 'Processing...' : 'Log In'}
-            </button>
-          )}
-          
-          <button 
-            type="button" 
-            onClick={() => { setIsSignup(!isSignup); setMessage(''); setIsError(false); }}
-            className="text-sm text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors"
+    <main className="min-h-screen bg-background text-foreground">
+      <div className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-4 py-10 sm:px-6">
+        <div className="mb-8">
+          <Link
+            href="/"
+            className="inline-flex h-11 items-center rounded-full border border-border bg-card px-5 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-muted/80"
           >
-            {isSignup ? 'Already have an account? Log in' : "Don't have an account? Sign up"}
-          </button>
+            ← Back to home
+          </Link>
         </div>
-      </form>
-    </div>
+
+        <form className="flex flex-col gap-6 rounded-2xl border border-border bg-card p-8 shadow-sm">
+          <h1 className="text-center text-2xl font-bold tracking-tight text-foreground">
+            {isSignup ? 'Create an account' : 'Welcome back'}
+          </h1>
+
+          {message && (
+            <div
+              className={
+                isError
+                  ? 'rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm font-medium text-destructive'
+                  : 'rounded-xl border border-primary/25 bg-primary/10 p-4 text-sm font-medium text-foreground'
+              }
+            >
+              {message}
+            </div>
+          )}
+
+          <div className="flex flex-col gap-2">
+            <label htmlFor="email" className="text-sm font-medium text-foreground">
+              Email
+            </label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              placeholder="you@example.com"
+              required
+              className={inputClass}
+            />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label htmlFor="password" className="text-sm font-medium text-foreground">
+              Password
+            </label>
+            <input id="password" name="password" type="password" required className={inputClass} />
+          </div>
+
+          {isSignup && (
+            <>
+              <div className="flex flex-col gap-2">
+                <label htmlFor="username" className="text-sm font-medium text-foreground">
+                  Username
+                </label>
+                <input id="username" name="username" type="text" required={isSignup} className={inputClass} />
+              </div>
+              <div className="flex flex-col gap-2">
+                <label htmlFor="full_name" className="text-sm font-medium text-foreground">
+                  Full name
+                </label>
+                <input id="full_name" name="full_name" type="text" required={isSignup} className={inputClass} />
+              </div>
+              <div className="flex flex-col gap-2">
+                <label htmlFor="avatar_url" className="text-sm font-medium text-foreground">
+                  Avatar URL
+                </label>
+                <input id="avatar_url" name="avatar_url" type="url" required={isSignup} className={inputClass} />
+              </div>
+              <div className="flex flex-col gap-2">
+                <label htmlFor="website" className="text-sm font-medium text-foreground">
+                  Website
+                </label>
+                <input id="website" name="website" type="url" required={isSignup} className={inputClass} />
+              </div>
+              <div className="flex flex-col gap-2">
+                <label htmlFor="bio" className="text-sm font-medium text-foreground">
+                  Bio
+                </label>
+                <textarea
+                  id="bio"
+                  name="bio"
+                  required={isSignup}
+                  className={`${inputClass} min-h-20 resize-none`}
+                />
+              </div>
+            </>
+          )}
+
+          <div className="mt-2 flex flex-col gap-3">
+            {isSignup ? (
+              <button
+                type="submit"
+                formAction={(formData) => handleAction(formData, signup)}
+                disabled={isLoading}
+                className="h-11 w-full rounded-xl bg-primary text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50"
+              >
+                {isLoading ? 'Creating account…' : 'Sign up'}
+              </button>
+            ) : (
+              <button
+                type="submit"
+                formAction={(formData) => handleAction(formData, login)}
+                disabled={isLoading}
+                className="h-11 w-full rounded-xl bg-primary text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50"
+              >
+                {isLoading ? 'Signing in…' : 'Sign in'}
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => {
+                setIsSignup(!isSignup)
+                setMessage('')
+                setIsError(false)
+              }}
+              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              {isSignup ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </main>
   )
 }
