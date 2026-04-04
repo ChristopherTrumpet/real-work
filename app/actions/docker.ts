@@ -42,53 +42,43 @@ export async function deployContainer(formData: FormData) {
 
   let hostPort = ''
   let volumeMount = ''
-  let workdir = '/app'
+  let workdir = '/config' // Default to /config for these types of images
   
   try {
-    // 1. Handle persistent session if logged in
+    // 1. Determine the correct working directory for the image (for all users)
+    try {
+      const { stdout: inspectStdout } = await execAsync(`docker inspect --format="{{.Config.WorkingDir}}" ${image}`)
+      const trimmedWorkdir = inspectStdout.trim().replace(/^['"]|['"]$/g, '')
+      
+      if (trimmedWorkdir && trimmedWorkdir !== '/') {
+        workdir = trimmedWorkdir
+      } else {
+        // Fallback to checking for a defined Volume if WorkingDir isn't useful
+        const { stdout: volStdout } = await execAsync(`docker inspect --format="{{json .Config.Volumes}}" ${image}`)
+        const volumes = JSON.parse(volStdout)
+        const volKeys = Object.keys(volumes)
+        if (volKeys.length > 0) {
+          // Prefer /config if it exists, otherwise take the first one
+          workdir = volKeys.includes('/config') ? '/config' : volKeys[0]
+        }
+      }
+    } catch(e) {
+      console.warn('Could not inspect image, defaulting workdir to /config.')
+    }
+
+    // 2. Handle persistent session ONLY if logged in
     if (userId && postId) {
       const localPath = path.join(process.cwd(), 'container_data', userId, postId)
       
-      // If user wants to start over, delete the existing local folder
       if (actionType === 'restart') {
         fs.rmSync(localPath, { recursive: true, force: true })
       }
 
-      // Determine the container's working directory or persistent volume
-      try {
-        const { stdout: inspectStdout } = await execAsync(`docker inspect --format="{{.Config.WorkingDir}}" ${image}`)
-        const trimmedWorkdir = inspectStdout.trim().replace(/^['"]|['"]$/g, '')
-        
-        if (trimmedWorkdir && trimmedWorkdir !== '/') {
-          workdir = trimmedWorkdir
-        } else {
-          // If no working dir, check if the image has a defined Volume (like /config for desktop containers)
-          try {
-            const { stdout: volStdout } = await execAsync(`docker inspect --format="{{.Config.Volumes}}" ${image}`)
-            const volMatch = volStdout.match(/map\[([^:]+):/)
-            if (volMatch && volMatch[1]) {
-              workdir = volMatch[1]
-            } else {
-              workdir = '/config'
-            }
-          } catch(ve) {
-            workdir = '/config'
-          }
-        }
-      } catch(e) {
-        console.warn('Could not inspect image for workdir, defaulting to /config')
-        workdir = '/config'
-      }
-
-      // If the local folder doesn't exist, create it and extract initial files
       if (!fs.existsSync(localPath)) {
         fs.mkdirSync(localPath, { recursive: true })
         try {
           const { stdout: createStdout } = await execAsync(`docker create ${image}`)
           const tmpId = createStdout.trim()
-          
-          // Copy initial files from the image to the local folder
-          // Using /. ensures we copy the contents, not the directory itself
           await execAsync(`docker cp ${tmpId}:${workdir}/. "${localPath}/"`)
           await execAsync(`docker rm -v ${tmpId}`)
         } catch (e) {
@@ -99,22 +89,20 @@ export async function deployContainer(formData: FormData) {
       volumeMount = `-v "${localPath}:${workdir}"`
     }
 
-    // 2. Start the container
+    // 3. Start the container
     const runCmd = `docker run -d --shm-size="1gb" -p 0:${internalPort} ${volumeMount} ${image}`
     const { stdout: runStdout } = await execAsync(runCmd)
     const containerId = runStdout.trim()
 
-    // 3. Fix permissions
-    // We retry a few times because the container might take a second to fully start
+    // 4. Fix permissions for the determined workdir (for all users)
     let permSuccess = false;
     for (let i = 0; i < 5; i++) {
       try {
-        // Wait 1 second before each attempt
         await new Promise(resolve => setTimeout(resolve, 1000))
         const chmodCmd = `docker exec -u root ${containerId} chmod -R 777 ${workdir}`
         await execAsync(chmodCmd)
         permSuccess = true;
-        break; // Success, exit loop
+        break; 
       } catch (permError: any) {
         console.warn(`Attempt ${i + 1} to fix permissions failed:`, permError.message || permError)
       }
@@ -124,7 +112,7 @@ export async function deployContainer(formData: FormData) {
       console.error('Failed to update container permissions after multiple attempts.')
     }
 
-    // 4. Get assigned port
+    // 5. Get assigned port
     const portCmd = `docker port ${containerId} ${internalPort}`
     const { stdout: portStdout } = await execAsync(portCmd)
     
