@@ -28,6 +28,15 @@ export async function signup(formData: FormData) {
   const data = {
     email: formData.get('email') as string,
     password: formData.get('password') as string,
+    options: {
+      data: {
+        username: formData.get('username') as string,
+        full_name: formData.get('full_name') as string,
+        avatar_url: formData.get('avatar_url') as string,
+        website: formData.get('website') as string,
+        bio: formData.get('bio') as string,
+      }
+    }
   }
 
   const { data: { session }, error } = await supabase.auth.signUp(data)
@@ -36,8 +45,10 @@ export async function signup(formData: FormData) {
     return { error: error.message }
   }
 
+  // If session is null, it means email confirmation is still ON in the dashboard.
+  // We'll show a generic success message if that's the case.
   if (!session) {
-    return { message: 'Check your email to confirm your account.' }
+    return { message: 'Account created! Please check your email if confirmation is required.' }
   }
 
   revalidatePath('/', 'layout')

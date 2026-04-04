@@ -8,6 +8,7 @@ export default function LoginPage() {
   const [message, setMessage] = useState('')
   const [isError, setIsError] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [isSignup, setIsSignup] = useState(false)
 
   const handleAction = async (formData: FormData, action: typeof login) => {
     setIsLoading(true)
@@ -24,7 +25,7 @@ export default function LoginPage() {
         setIsError(false)
       }
     } catch (error) {
-      // Catch any unexpected errors (like redirect throwing an error which is normal in Next.js, but shouldn't hit here if it redirects)
+      // Catch any unexpected errors
     } finally {
       setIsLoading(false)
     }
@@ -42,7 +43,9 @@ export default function LoginPage() {
       <form 
         className="flex flex-col gap-6 w-full max-w-md p-8 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm"
       >
-        <h1 className="text-2xl font-extrabold text-center mb-2">Welcome Back</h1>
+        <h1 className="text-2xl font-extrabold text-center mb-2">
+          {isSignup ? 'Create an Account' : 'Welcome Back'}
+        </h1>
         
         {message && (
           <div className={`p-4 rounded-xl text-sm font-medium ${isError ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800/50' : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800/50'}`}>
@@ -72,23 +75,88 @@ export default function LoginPage() {
             className="w-full border border-zinc-300 dark:border-zinc-700 p-3 rounded-lg bg-zinc-50 dark:bg-zinc-950 focus:ring-2 focus:ring-blue-500 outline-none transition-all" 
           />
         </div>
+
+        {isSignup && (
+          <>
+            <div className="flex flex-col gap-2">
+              <label htmlFor="username" className="text-sm font-bold text-zinc-700 dark:text-zinc-300">Username</label>
+              <input 
+                id="username" 
+                name="username" 
+                type="text" 
+                required={isSignup}
+                className="w-full border border-zinc-300 dark:border-zinc-700 p-3 rounded-lg bg-zinc-50 dark:bg-zinc-950 focus:ring-2 focus:ring-blue-500 outline-none transition-all" 
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <label htmlFor="full_name" className="text-sm font-bold text-zinc-700 dark:text-zinc-300">Full Name</label>
+              <input 
+                id="full_name" 
+                name="full_name" 
+                type="text" 
+                required={isSignup}
+                className="w-full border border-zinc-300 dark:border-zinc-700 p-3 rounded-lg bg-zinc-50 dark:bg-zinc-950 focus:ring-2 focus:ring-blue-500 outline-none transition-all" 
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <label htmlFor="avatar_url" className="text-sm font-bold text-zinc-700 dark:text-zinc-300">Avatar URL</label>
+              <input 
+                id="avatar_url" 
+                name="avatar_url" 
+                type="url" 
+                required={isSignup}
+                className="w-full border border-zinc-300 dark:border-zinc-700 p-3 rounded-lg bg-zinc-50 dark:bg-zinc-950 focus:ring-2 focus:ring-blue-500 outline-none transition-all" 
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <label htmlFor="website" className="text-sm font-bold text-zinc-700 dark:text-zinc-300">Website</label>
+              <input 
+                id="website" 
+                name="website" 
+                type="url" 
+                required={isSignup}
+                className="w-full border border-zinc-300 dark:border-zinc-700 p-3 rounded-lg bg-zinc-50 dark:bg-zinc-950 focus:ring-2 focus:ring-blue-500 outline-none transition-all" 
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <label htmlFor="bio" className="text-sm font-bold text-zinc-700 dark:text-zinc-300">Bio</label>
+              <textarea 
+                id="bio" 
+                name="bio" 
+                required={isSignup}
+                className="w-full border border-zinc-300 dark:border-zinc-700 p-3 rounded-lg bg-zinc-50 dark:bg-zinc-950 focus:ring-2 focus:ring-blue-500 outline-none transition-all h-20 resize-none" 
+              />
+            </div>
+          </>
+        )}
         
-        <div className="flex gap-4 mt-4">
+        <div className="flex flex-col gap-3 mt-4">
+          {isSignup ? (
+            <button 
+              type="submit" 
+              formAction={(formData) => handleAction(formData, signup)} 
+              disabled={isLoading}
+              className="w-full bg-zinc-900 dark:bg-white dark:text-black text-white p-3 rounded-xl font-bold hover:opacity-90 transition-opacity shadow-lg disabled:opacity-50"
+            >
+              {isLoading ? 'Creating Account...' : 'Sign Up'}
+            </button>
+          ) : (
+            <button 
+              type="submit" 
+              formAction={(formData) => handleAction(formData, login)} 
+              disabled={isLoading}
+              className="w-full bg-blue-600 text-white p-3 rounded-xl font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/20 disabled:opacity-50"
+            >
+              {isLoading ? 'Processing...' : 'Log In'}
+            </button>
+          )}
+          
           <button 
-            type="submit" 
-            formAction={(formData) => handleAction(formData, login)} 
-            disabled={isLoading}
-            className="flex-1 bg-blue-600 text-white p-3 rounded-xl font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/20 disabled:opacity-50"
+            type="button" 
+            onClick={() => { setIsSignup(!isSignup); setMessage(''); setIsError(false); }}
+            className="text-sm text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors"
           >
-            {isLoading ? 'Processing...' : 'Log In'}
-          </button>
-          <button 
-            type="submit" 
-            formAction={(formData) => handleAction(formData, signup)} 
-            disabled={isLoading}
-            className="flex-1 bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 p-3 rounded-xl font-bold hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-colors disabled:opacity-50"
-          >
-            Sign Up
+            {isSignup ? 'Already have an account? Log in' : "Don't have an account? Sign up"}
           </button>
         </div>
       </form>

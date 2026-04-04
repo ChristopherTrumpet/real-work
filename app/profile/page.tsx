@@ -1,8 +1,7 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/utils/supabase/server'
-import { updateProfile } from './actions'
-import DifficultyWheel from '@/components/DifficultyWheel'
+import { updateProfile, deleteAccount } from './actions'
 
 export default async function ProfilePage() {
   const supabase = await createClient()
@@ -72,6 +71,12 @@ export default async function ProfilePage() {
           <form action="/auth/signout" method="post">
             <button type="submit" className="w-full bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 p-3 rounded-2xl hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors font-bold">
               Sign Out
+            </button>
+          </form>
+
+          <form action={deleteAccount}>
+            <button type="submit" className="w-full bg-red-600 text-white p-3 rounded-2xl hover:bg-red-700 transition-colors font-bold shadow-lg shadow-red-500/20">
+              Delete Account
             </button>
           </form>
         </div>

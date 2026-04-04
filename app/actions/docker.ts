@@ -124,9 +124,12 @@ export async function deployContainer(formData: FormData) {
     redirect('/error?message=' + encodeURIComponent('Docker deployment failed: ' + (error.stderr || error.message)))
   }
 
-  redirect(`/preview?port=${hostPort}`)
+  if (postId) {
+    redirect(`/preview?port=${hostPort}&postId=${postId}`)
+  } else {
+    redirect(`/preview?port=${hostPort}`)
+  }
 }
-
 
 export async function killContainer(port: number): Promise<{ success: boolean; message: string }> {
   if (!port) {
