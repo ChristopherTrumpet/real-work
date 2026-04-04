@@ -64,10 +64,15 @@ export async function publishChallenge(formData: FormData) {
   const title = formData.get('title') as string
   const description = formData.get('description') as string
   const difficulty = formData.get('difficulty') as string
+  const tagsStr = formData.get('tags') as string
 
   if (!containerId || !title) {
     redirect('/error?message=' + encodeURIComponent('Missing required fields'))
   }
+
+  const tags = tagsStr 
+    ? tagsStr.split(',').map(t => t.trim()).filter(Boolean) 
+    : []
 
   const imageName = `user-${user.id.substring(0,8).toLowerCase()}-${Date.now()}`
 
@@ -126,13 +131,12 @@ RUN chmod -R 777 ${workdir} || true
     redirect('/error?message=' + encodeURIComponent('Failed to save container image: ' + (error.stderr || error.message)))
   }
 
-  // Format description to include difficulty
-  const fullDescription = `[Difficulty: ${difficulty.toUpperCase()}]\n\n${description}`
-
   const { error } = await supabase.from('posts').insert({
     user_id: user.id,
     title,
-    description: fullDescription,
+    description,
+    difficulty,
+    tags,
     content_url: imageName
   })
 
