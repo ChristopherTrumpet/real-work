@@ -10,7 +10,6 @@ import path from 'path'
 const execAsync = promisify(exec)
 
 export async function isContainerReady(port: number): Promise<boolean> {
-// ... existing isContainerReady code ...
   return new Promise((resolve) => {
     const socket = new net.Socket()
     const onError = () => {
@@ -131,6 +130,18 @@ export async function deployContainer(formData: FormData) {
   }
 }
 
+export async function getContainerIdByPort(port: number): Promise<string | null> {
+  if (!port) return null
+  try {
+    const findCmd = `docker ps --filter "publish=${port}" --format "{{.ID}}"`
+    const { stdout } = await execAsync(findCmd)
+    return stdout.trim() || null
+  } catch (error) {
+    console.error('Error getting container ID:', error)
+    return null
+  }
+}
+
 export async function killContainer(port: number): Promise<{ success: boolean; message: string }> {
   if (!port) {
     return { success: false, message: 'Port not provided.' }
@@ -138,14 +149,13 @@ export async function killContainer(port: number): Promise<{ success: boolean; m
 
   try {
     // Find the container ID using the port
-    const findCmd = `docker ps --filter "publish=${port}" --format "{{.ID}}"`
-    const { stdout: containerId } = await execAsync(findCmd)
+    const findId = await getContainerIdByPort(port)
 
-    if (!containerId) {
+    if (!findId) {
       return { success: false, message: `No container found on port ${port}.` }
     }
 
-    const trimmedId = containerId.trim()
+    const trimmedId = findId.trim()
     // Stop and remove the container
     const stopCmd = `docker stop ${trimmedId}`
     await execAsync(stopCmd)

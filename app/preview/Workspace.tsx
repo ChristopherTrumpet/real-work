@@ -3,8 +3,11 @@
 import React, { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import DraggableWindow from '@/components/DraggableWindow'
-import { killContainer, isContainerReady } from '@/app/actions/docker'
+import { killContainer, isContainerReady, getContainerIdByPort } from '@/app/actions/docker'
 import { submitCompletion, submitRating, submitComment } from '@/app/actions/preview'
+import { evaluateChallengeAction } from '@/app/actions/benchmark'
+import { BenchmarkResult } from '@/lib/evaluator'
+import BenchmarkResults from '@/components/BenchmarkResults'
 
 export default function PreviewWorkspace({ post, comments }: { post?: any, comments?: any[] }) {
   const router = useRouter()
@@ -17,6 +20,12 @@ export default function PreviewWorkspace({ post, comments }: { post?: any, comme
   
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [rating, setRating] = useState<number>(0)
+
+  // Benchmarking state
+  const [isEvaluating, setIsEvaluating] = useState(false)
+  const [benchmarkResult, setBenchmarkResult] = useState<BenchmarkResult | null>(null)
+  const [userCode, setUserCode] = useState('')
+  const [showEvalModal, setShowEvalModal] = useState(false)
 
   useEffect(() => {
     setPort(initialPort)
@@ -75,8 +84,74 @@ export default function PreviewWorkspace({ post, comments }: { post?: any, comme
     await submitRating(post.id, star);
   }
 
+  const handleRunEvaluation = async () => {
+    if (!post || !port || !userCode) return
+    
+    setIsEvaluating(true)
+    try {
+      const containerId = await getContainerIdByPort(parseInt(port))
+      if (!containerId) throw new Error('Could not find active container')
+
+      const result = await evaluateChallengeAction({
+        containerId,
+        language: post.benchmark_language || 'python',
+        userCode,
+        goldCode: post.benchmark_gold_code,
+        testCases: post.benchmark_test_cases,
+        timeoutMs: post.benchmark_timeout_ms || 10000
+      })
+      
+      setBenchmarkResult(result)
+    } catch (e: any) {
+      alert('Evaluation failed: ' + e.message)
+    } finally {
+      setIsEvaluating(false)
+    }
+  }
+
   return (
     <div className="flex flex-col w-full h-screen bg-zinc-100 dark:bg-zinc-900 overflow-hidden text-zinc-900 dark:text-zinc-100">
+      {benchmarkResult && (
+        <BenchmarkResults result={benchmarkResult} onClose={() => setBenchmarkResult(null)} />
+      )}
+
+      {showEvalModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-zinc-900 w-full max-w-2xl rounded-2xl shadow-2xl border border-zinc-200 dark:border-zinc-800 p-6 flex flex-col gap-4 animate-in zoom-in-95 duration-200">
+            <h2 className="text-xl font-bold">Submit for Performance Evaluation</h2>
+            <p className="text-sm text-zinc-500">Paste your algorithm implementation below to test it against the gold standard and benchmark its performance.</p>
+            
+            <textarea 
+              className="w-full h-64 p-4 font-mono text-sm bg-zinc-50 dark:bg-black border border-zinc-200 dark:border-zinc-800 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition-all resize-none"
+              placeholder={`Paste your ${post?.benchmark_language || 'code'} here...`}
+              value={userCode}
+              onChange={(e) => setUserCode(e.target.value)}
+            />
+
+            <div className="flex justify-end gap-3 mt-2">
+              <button 
+                onClick={() => setShowEvalModal(false)}
+                className="px-6 py-2 text-sm font-bold text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleRunEvaluation}
+                disabled={isEvaluating || !userCode}
+                className="px-6 py-2 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/20 flex items-center gap-2 disabled:opacity-50"
+              >
+                {isEvaluating ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Running Benchmarks...
+                  </>
+                ) : 'Run Performance Test'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <nav className="h-16 shrink-0 px-6 bg-gray-900/95 backdrop-blur-sm text-white flex justify-between items-center border-b border-gray-800 z-50">
         <div className="flex items-center gap-4">
           <h1 className="font-bold text-lg tracking-tight">Active Workspace</h1>
@@ -124,12 +199,24 @@ export default function PreviewWorkspace({ post, comments }: { post?: any, comme
 
               <div className="p-4 bg-zinc-50 dark:bg-zinc-950 rounded-xl border border-zinc-200 dark:border-zinc-800">
                 <h3 className="font-bold mb-3 text-sm">Challenge Controls</h3>
+                
+                {post.benchmark_gold_code && (
+                  <button 
+                    onClick={() => setShowEvalModal(true)}
+                    disabled={!isReady}
+                    className="w-full bg-blue-600 text-white p-3 rounded-lg font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/20 disabled:opacity-50 mb-3 flex items-center justify-center gap-2"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                    Evaluate Performance
+                  </button>
+                )}
+
                 <button 
                   onClick={handleComplete}
                   disabled={isSubmitting || !isReady}
                   className="w-full bg-green-600 text-white p-3 rounded-lg font-bold hover:bg-green-700 transition-colors shadow-lg shadow-green-500/20 disabled:opacity-50 mb-4"
                 >
-                  {isSubmitting ? 'Submitting...' : 'Submit Solution!'}
+                  {isSubmitting ? 'Submitting...' : 'Mark as Completed'}
                 </button>
 
                 <div className="flex flex-col gap-2">
