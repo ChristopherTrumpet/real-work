@@ -29,7 +29,7 @@ export default function DraggableWindow({ port, onClose }: DraggableWindowProps)
   const resizeStartSize = useRef({ width: 0, height: 0 })
   const windowRef = useRef<HTMLDivElement>(null)
   
-  const src = `http://${dockerHostIp}:${port}`
+  const src = `http://localhost:${port}`
 
   useEffect(() => {
     async function fetchIp() {

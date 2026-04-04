@@ -6,118 +6,80 @@ import fs from 'fs'
 import path from 'path'
 import Docker from 'dockerode'
 import tar from 'tar-fs'
-import * as https from 'https';
 
-const dockerHostIp = process.env.DOCKER_HOST_IP || '127.0.0.1';
+const remoteHostIp = process.env.DOCKER_HOST_IP;
+const registryUrl = remoteHostIp ? `${remoteHostIp}:5000` : null;
 
-const dockerOptions: Docker.DockerOptions = {};
+// Local Docker
+const isWindows = process.platform === 'win32';
+const docker = new Docker(
+  isWindows 
+    ? { socketPath: '//./pipe/docker_engine' } 
+    : { socketPath: '/var/run/docker.sock' }
+);
 
-// Support both naming conventions from the setup script and the previous code
-const caPem = process.env.DOCKER_CA_PEM || process.env.DOCKER_CA_CERT;
-const clientPem = process.env.DOCKER_CLIENT_PEM || process.env.DOCKER_CLIENT_CERT;
-const clientKeyPem = process.env.DOCKER_CLIENT_KEY_PEM || process.env.DOCKER_CLIENT_KEY;
-
-if (caPem && clientPem && clientKeyPem) {
-  const caContent = caPem.replace(/\\n/g, '\n');
-  const certContent = clientPem.replace(/\\n/g, '\n');
-  const keyContent = clientKeyPem.replace(/\\n/g, '\n');
-
-  const agent = new https.Agent({
-    ca: caContent,
-    cert: certContent,
-    key: keyContent,
-    rejectUnauthorized: false,
-    checkServerIdentity: (hostname, cert) => {
-      return undefined;
-    },
-  });
-
-  dockerOptions.host = dockerHostIp;
-  dockerOptions.port = 2376;
-  dockerOptions.protocol = 'https';
-  dockerOptions.agent = agent;
-} else if (process.env.DOCKER_HOST_IP) {
-  dockerOptions.host = dockerHostIp;
-  dockerOptions.port = 2375;
+async function ensureImage(imageName: string) {
+  // 1. Try local check first
+  try {
+    await docker.getImage(imageName).inspect();
+    return imageName;
+  } catch (e) {
+    // 2. If not found and registry exists, try registry version
+    if (registryUrl && !imageName.includes('/')) {
+      const remoteName = `${registryUrl}/${imageName}`;
+      try {
+        console.log(`Checking remote registry for ${remoteName}...`);
+        await new Promise((resolve, reject) => {
+          docker.pull(remoteName, (err: any, stream: any) => {
+            if (err) return reject(err);
+            docker.modem.followProgress(stream, (err2: any) => err2 ? reject(err2) : resolve(true));
+          });
+        });
+        return remoteName;
+      } catch (pullErr) {
+        console.warn(`Could not pull from registry: ${imageName}. Falling back to public hub.`);
+      }
+    }
+    
+    // 3. Fallback: Pull original name from public hub
+    await new Promise((resolve, reject) => {
+      docker.pull(imageName, (err: any, stream: any) => {
+        if (err) return reject(err);
+        docker.modem.followProgress(stream, (err2: any) => err2 ? reject(err2) : resolve(true));
+      });
+    });
+    return imageName;
+  }
 }
-
-const docker = new Docker(dockerOptions);
 
 export async function startStudioSession() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  
-  if (!user) {
-    redirect('/login')
-  }
+  if (!user) redirect('/login')
 
-  const image = 'challenge01'
-  const internalPort = '3000'
   let hostPort = ''
   let containerId = ''
 
   try {
-    // Pull image if not exists
-    let imageInfo;
-    try {
-      imageInfo = await docker.getImage(image).inspect();
-    } catch (e: any) {
-      if (e.statusCode === 404) {
-        await new Promise((resolve, reject) => {
-          docker.pull(image, (err: any, stream: any) => {
-            if (err) return reject(err);
-            docker.modem.followProgress(stream, onFinished, onProgress);
-            function onFinished(err: any, output: any) {
-              if (err) return reject(err);
-              resolve(output);
-            }
-            function onProgress(event: any) {}
-          });
-        });
-      }
-    }
+    const imageName = await ensureImage('challenge01');
+    const internalPort = '3000'
 
-    const createOptions: Docker.ContainerCreateOptions = {
-      Image: image,
+    const container = await docker.createContainer({
+      Image: imageName,
       HostConfig: {
         ShmSize: 1024 * 1024 * 1024,
         Binds: [`studio-${user.id}:/config`],
-        PortBindings: {
-          [`${internalPort}/tcp`]: [{ HostPort: '0' }]
-        }
+        PortBindings: { [`${internalPort}/tcp`]: [{ HostPort: '0' }] }
       }
-    };
+    });
 
-    const container = await docker.createContainer(createOptions);
     await container.start();
     containerId = container.id;
-
-    let permSuccess = false;
-    for (let i = 0; i < 5; i++) {
-      try {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        const exec = await container.exec({
-          Cmd: ['chmod', '-R', '777', '/config'],
-          User: 'root',
-          AttachStdout: true,
-          AttachStderr: true
-        });
-        await exec.start({});
-        await new Promise(resolve => setTimeout(resolve, 500));
-        permSuccess = true;
-        break; 
-      } catch (permError) {}
-    }
-
     const containerInfo = await container.inspect();
-    const networkSettings = containerInfo.NetworkSettings;
-    const ports = networkSettings.Ports;
+    hostPort = containerInfo.NetworkSettings.Ports[`${internalPort}/tcp`][0].HostPort;
     
-    if (ports && ports[`${internalPort}/tcp`] && ports[`${internalPort}/tcp`].length > 0) {
-      hostPort = ports[`${internalPort}/tcp`][0].HostPort;
-    } else {
-      throw new Error('Could not determine assigned host port');
-    }
+    const exec = await container.exec({ Cmd: ['chmod', '-R', '777', '/config'], User: 'root' });
+    await exec.start({});
   } catch (error: any) {
     console.error('Studio Error:', error)
     redirect('/error?message=' + encodeURIComponent('Failed to start studio: ' + (error.message || String(error))))
@@ -129,10 +91,7 @@ export async function startStudioSession() {
 export async function publishChallenge(formData: FormData) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  
-  if (!user) {
-    redirect('/error?message=' + encodeURIComponent('You must be logged in to publish'))
-  }
+  if (!user) redirect('/error?message=Unauthorized');
 
   const containerId = formData.get('containerId') as string
   const title = formData.get('title') as string
@@ -140,114 +99,78 @@ export async function publishChallenge(formData: FormData) {
   const difficulty = formData.get('difficulty') as string
   const tagsStr = formData.get('tags') as string
 
-  if (!containerId || !title) {
-    redirect('/error?message=' + encodeURIComponent('Missing required fields'))
-  }
-
-  const tags = tagsStr 
-    ? tagsStr.split(',').map(t => t.trim()).filter(Boolean) 
-    : []
-
-  const imageName = `user-${user.id.substring(0,8).toLowerCase()}-${Date.now()}`
-  let baseImageName = `${imageName}-base`;
+  const localImageName = `user-${user.id.substring(0,8)}-${Date.now()}`
+  const remoteImageName = registryUrl ? `${registryUrl}/${localImageName}` : localImageName;
   const tmpBuildDir = path.join(process.cwd(), 'tmp_build', containerId);
 
   try {
     const container = docker.getContainer(containerId);
+    const inspectInfo = await container.inspect();
+    let workdir = inspectInfo.Config.WorkingDir || '/config';
 
-    // 1. Determine the working directory (volume) to extract
-    let workdir = '/config'
-    try {
-      const inspectInfo = await container.inspect();
-      const trimmedWorkdir = inspectInfo.Config.WorkingDir;
-      if (trimmedWorkdir && trimmedWorkdir !== '/') {
-        workdir = trimmedWorkdir;
-      } else {
-        const volumes = inspectInfo.Config.Volumes;
-        if (volumes) {
-          const volKeys = Object.keys(volumes);
-          if (volKeys.length > 0) {
-            workdir = volKeys.includes('/config') ? '/config' : volKeys[0];
-          }
-        }
-      }
-    } catch(e) {}
-
-    // 2. Setup a temporary build context
     fs.mkdirSync(tmpBuildDir, { recursive: true })
-
-    // 3. Extract the volume contents from the running studio container
-    const extractPath = path.join(tmpBuildDir, 'raw_archive');
+    const extractPath = path.join(tmpBuildDir, 'workspace_data');
     fs.mkdirSync(extractPath, { recursive: true });
     
     const archiveStream = await container.getArchive({ path: workdir });
     await new Promise((resolve, reject) => {
-      archiveStream.pipe(tar.extract(extractPath))
-        .on('finish', resolve)
-        .on('error', reject);
+      archiveStream.pipe(tar.extract(extractPath)).on('finish', resolve).on('error', reject);
     });
 
     const extractedItems = fs.readdirSync(extractPath);
     if (extractedItems.length === 1) {
-      fs.renameSync(path.join(extractPath, extractedItems[0]), path.join(tmpBuildDir, 'workspace_data'));
-      fs.rmSync(extractPath, { recursive: true, force: true });
-    } else {
-      fs.renameSync(extractPath, path.join(tmpBuildDir, 'workspace_data'));
+       const subDir = path.join(extractPath, extractedItems[0]);
+       if (fs.statSync(subDir).isDirectory()) {
+         const items = fs.readdirSync(subDir);
+         items.forEach(item => fs.renameSync(path.join(subDir, item), path.join(extractPath, item)));
+         fs.rmdirSync(subDir);
+       }
     }
 
-    // 4. Commit the base container (captures changes outside the volume)
-    await container.commit({ repo: baseImageName });
+    await container.commit({ repo: localImageName });
 
-    // 5. Create a Dockerfile to bake the extracted volume back into the final image
-    const dockerfileContent = `
-FROM ${baseImageName}
-# Copy the extracted volume data back into the container's working directory
+    fs.writeFileSync(path.join(tmpBuildDir, 'Dockerfile'), `
+FROM ${localImageName}
 COPY workspace_data ${workdir}
-# Ensure permissions are correct
 USER root
 RUN chmod -R 777 ${workdir} || true
-`
-    fs.writeFileSync(path.join(tmpBuildDir, 'Dockerfile'), dockerfileContent)
+`)
 
-    // 6. Build the final image on the remote docker daemon
     const packStream = tar.pack(tmpBuildDir);
     await new Promise((resolve, reject) => {
-      docker.buildImage(packStream, { t: imageName }, (err: any, responseStream: any) => {
+      docker.buildImage(packStream, { t: remoteImageName }, (err: any, stream: any) => {
         if (err) return reject(err);
-        docker.modem.followProgress(responseStream, (buildErr: any, output: any) => {
-          if (buildErr) reject(buildErr);
-          else resolve(output);
-        });
+        docker.modem.followProgress(stream, (err2: any) => err2 ? reject(err2) : resolve(true));
       });
     });
 
-    // 7. Clean up everything
+    if (registryUrl) {
+      console.log(`Pushing ${remoteImageName} to Oracle...`);
+      const image = docker.getImage(remoteImageName);
+      await new Promise((resolve, reject) => {
+        image.push({}, (err: any, stream: any) => {
+          if (err) return reject(err);
+          docker.modem.followProgress(stream, (err2: any) => err2 ? reject(err2) : resolve(true));
+        });
+      });
+    }
+
     await container.stop();
     await container.remove();
-    
-    const baseImage = docker.getImage(baseImageName);
-    await baseImage.remove();
-    
     fs.rmSync(tmpBuildDir, { recursive: true, force: true });
 
+    const { error } = await supabase.from('posts').insert({
+      user_id: user.id,
+      title,
+      description,
+      difficulty,
+      tags: tagsStr ? tagsStr.split(',').map(t => t.trim()) : [],
+      content_url: localImageName
+    })
+
+    if (error) throw error;
   } catch (error: any) {
-    console.error('Docker commit error:', error)
-    if (fs.existsSync(tmpBuildDir)) {
-      fs.rmSync(tmpBuildDir, { recursive: true, force: true });
-    }
-    redirect('/error?message=' + encodeURIComponent('Failed to save container image: ' + (error.message || String(error))))
-  }
-
-  const { error } = await supabase.from('posts').insert({
-    user_id: user.id,
-    title,
-    description,
-    difficulty,
-    tags,
-    content_url: imageName
-  })
-
-  if (error) {
+    console.error('Publish Error:', error)
     redirect('/error?message=' + encodeURIComponent(error.message))
   }
 
