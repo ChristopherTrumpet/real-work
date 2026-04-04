@@ -32,6 +32,7 @@ export default async function Home() {
   }
 
   const totalChallenges = list.length
+  const libraryPreview = list.slice(0, 6)
   const totalCompletions = list.reduce((acc, c) => acc + (c.number_of_completions ?? 0), 0)
   const contributorCount = new Set(list.map((c) => c.user_id as string).filter(Boolean)).size
 
@@ -52,7 +53,7 @@ export default async function Home() {
             <form action={startStudioSession} className="w-full sm:w-auto">
               <button
                 type="submit"
-                className="inline-flex h-11 w-full items-center justify-center rounded-full border border-primary/40 bg-primary/5 px-6 text-sm font-semibold text-primary transition-colors hover:bg-primary/10 sm:w-auto"
+                className="inline-flex h-11 w-full items-center justify-center rounded-full border border-primary/45 bg-black/35 px-6 text-sm font-semibold text-primary shadow-[inset_0_1px_0_0_rgba(255,255,255,0.12)] backdrop-blur-md transition-colors hover:border-primary/55 hover:bg-black/48 dark:border-primary/40 dark:bg-neutral-950/55 dark:text-primary dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)] dark:hover:bg-neutral-950/68 dark:hover:border-primary/50 sm:w-auto"
               >
                 Create challenge
               </button>
@@ -97,9 +98,19 @@ export default async function Home() {
                 Curated containers you can open instantly. Each challenge runs in its own environment on your machine.
               </p>
             </div>
-            <p className="text-sm text-muted-foreground">
-              <span className="font-semibold tabular-nums text-foreground">{totalChallenges}</span> available
-            </p>
+            <div className="flex flex-col items-start gap-3 sm:items-end">
+              <p className="text-sm text-muted-foreground">
+                <span className="font-semibold tabular-nums text-foreground">{totalChallenges}</span> available
+              </p>
+              {totalChallenges > 6 && (
+                <Link
+                  href="/search"
+                  className="inline-flex h-10 items-center justify-center rounded-full border border-border bg-background px-5 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-muted"
+                >
+                  View more
+                </Link>
+              )}
+            </div>
           </div>
 
           {fetchError && (
@@ -109,8 +120,8 @@ export default async function Home() {
           )}
 
           <div className="flex flex-col gap-5">
-            {list.length > 0 ? (
-              list.map((container) => (
+            {libraryPreview.length > 0 ? (
+              libraryPreview.map((container) => (
                 <ChallengeFeedCard
                   key={container.id}
                   container={container}
