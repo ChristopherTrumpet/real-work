@@ -110,7 +110,7 @@ export default function PreviewWorkspace({ post, comments }: { post?: any, comme
   }
 
   return (
-    <div className="flex flex-col w-full h-screen bg-zinc-100 dark:bg-zinc-900 overflow-hidden text-zinc-900 dark:text-zinc-100">
+    <div className="flex flex-col w-full h-[calc(100vh-3.5rem)] bg-zinc-100 dark:bg-zinc-900 overflow-hidden text-zinc-900 dark:text-zinc-100">
       {benchmarkResult && (
         <BenchmarkResults result={benchmarkResult} onClose={() => setBenchmarkResult(null)} />
       )}
@@ -170,7 +170,7 @@ export default function PreviewWorkspace({ post, comments }: { post?: any, comme
         </button>
       </nav>
       
-      <div className="flex flex-grow w-full h-[calc(100vh-4rem)] overflow-hidden">
+      <div className="flex flex-grow w-full h-[calc(100vh-7.5rem)] overflow-hidden">
         
         {/* Optional Left Panel for Post Details */}
         {post && (

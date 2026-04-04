@@ -123,7 +123,7 @@ export default function StudioWorkspace() {
   }
 
   return (
-    <div className="flex flex-col w-full h-screen bg-background overflow-hidden text-foreground">
+    <div className="flex flex-col w-full h-[calc(100vh-3.5rem)] bg-background overflow-hidden text-foreground">
       {/* Prism Theme Injection */}
       <style dangerouslySetInnerHTML={{ __html: `
         .prism-editor-wrapper .prism-editor__textarea, .prism-editor-wrapper .prism-editor__editor {
@@ -175,7 +175,7 @@ export default function StudioWorkspace() {
         </Button>
       </nav>
       
-      <div className="flex flex-grow w-full h-[calc(100vh-3.5rem)] overflow-hidden">
+      <div className="flex flex-grow w-full h-[calc(100vh-7rem)] overflow-hidden">
         {/* Left Panel: Form */}
         <div className="w-[450px] shrink-0 bg-background border-r border-border flex flex-col overflow-hidden">
           <div className="p-6 border-b border-border">
