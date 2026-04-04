@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { createClient } from '@/utils/supabase/server'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { HeaderUserMenu } from '@/components/header-user-menu'
 
 export async function SiteHeader() {
   const supabase = await createClient()
@@ -8,47 +9,57 @@ export async function SiteHeader() {
     data: { user },
   } = await supabase.auth.getUser()
 
+  const { data: profile } = user
+    ? await supabase
+        .from('profiles')
+        .select('avatar_url, full_name, username')
+        .eq('id', user.id)
+        .maybeSingle()
+    : { data: null }
+
   return (
-    <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-md">
+    <header className="sticky top-0 z-50 border-b border-border bg-background">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
-        <div className="flex items-center gap-4 min-w-0">
+        <div className="flex min-w-0 items-center gap-4">
           <Link
             href="/"
-            className="font-mono text-lg font-bold tracking-tight text-foreground shrink-0"
+            className="shrink-0 font-mono text-lg font-bold tracking-tight text-foreground"
           >
             real_work
           </Link>
         </div>
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          <ThemeToggle />
-          {user && (
-            <span className="hidden md:inline text-xs text-muted-foreground truncate max-w-[140px]">
-              {user.email}
-            </span>
-          )}
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
           <Link
             href="/search"
             className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             aria-label="Search"
           >
             <svg className="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
             </svg>
           </Link>
           {user ? (
-            <Link
-              href="/profile"
-              className="rounded-full bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-            >
-              Profile
-            </Link>
+            <HeaderUserMenu
+              email={user.email ?? ''}
+              avatarUrl={profile?.avatar_url ?? null}
+              fullName={profile?.full_name ?? null}
+              username={profile?.username ?? null}
+            />
           ) : (
-            <Link
-              href="/login"
-              className="rounded-full bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-            >
-              Sign in
-            </Link>
+            <>
+              <ThemeToggle />
+              <Link
+                href="/login"
+                className="rounded-full bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+              >
+                Sign in
+              </Link>
+            </>
           )}
         </div>
       </div>

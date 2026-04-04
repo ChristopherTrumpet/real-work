@@ -390,3 +390,22 @@ grant execute on function public.delete_user() to authenticated;
 --
 -- Then create indexes, views, grants, and triggers from this file as required.
 -- -----------------------------------------------------------------------------
+--
+-- Profile photos (avatars) with Supabase Storage (run in Dashboard SQL or CLI):
+--   1. create bucket "avatars" (public read, or private + signed URLs).
+--   2. Policies (example — public bucket, users upload only to their folder):
+--        insert into storage.buckets (id, name, public) values ('avatars', 'avatars', true);
+--        create policy "Avatar images are publicly readable"
+--          on storage.objects for select using (bucket_id = 'avatars');
+--        create policy "Users can upload their own avatar"
+--          on storage.objects for insert with check (
+--            bucket_id = 'avatars' and auth.uid()::text = (storage.foldername(name))[1]
+--          );
+--        create policy "Users can update own avatar object"
+--          on storage.objects for update using (
+--            bucket_id = 'avatars' and auth.uid()::text = (storage.foldername(name))[1]
+--          );
+--   3. Upload from the app: supabase.storage.from('avatars').upload(`${userId}/avatar.jpg`, file, { upsert: true })
+--   4. Set profiles.avatar_url to the public URL: getPublicUrl(`${userId}/avatar.jpg`) or a signed URL if bucket is private.
+--   Alternatively keep storing any HTTPS URL in profiles.avatar_url (Gravatar, GitHub, etc.) without Storage.
+-- -----------------------------------------------------------------------------

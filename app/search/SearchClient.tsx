@@ -6,8 +6,15 @@ import Link from 'next/link'
 import { createClient } from '@/utils/supabase/client'
 import { escapeIlikePattern } from '@/lib/search'
 
-type Scope = 'all' | 'profiles' | 'containers'
+type Scope = 'all' | 'profiles' | 'challenges'
 type Difficulty = 'all' | 'easy' | 'medium' | 'hard'
+type ChallengeSort = 'latest' | 'ranking'
+
+function parseScope(raw: string | null): Scope {
+  if (raw === 'profiles') return 'profiles'
+  if (raw === 'challenges' || raw === 'containers') return 'challenges'
+  return 'all'
+}
 
 type ProfileRow = {
   id: string
@@ -24,6 +31,10 @@ type PostRow = {
   difficulty: string | null
   content_url: string | null
   tags: string[] | null
+  created_at: string
+  number_of_completions: number | null
+  average_rating: number | null
+  ratings_count: number | null
   profiles: { username: string | null; full_name: string | null } | null
 }
 
@@ -31,28 +42,31 @@ export default function SearchClient() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [q, setQ] = useState(() => searchParams.get('q') ?? '')
-  const [scope, setScope] = useState<Scope>(() => {
-    const s = searchParams.get('scope') as Scope | null
-    return s === 'profiles' || s === 'containers' ? s : 'all'
-  })
+  const [scope, setScope] = useState<Scope>(() => parseScope(searchParams.get('scope')))
   const [difficulty, setDifficulty] = useState<Difficulty>(() => {
     const d = searchParams.get('difficulty') as Difficulty | null
     return d === 'easy' || d === 'medium' || d === 'hard' ? d : 'all'
   })
+  const [sort, setSort] = useState<ChallengeSort>(() =>
+    searchParams.get('sort') === 'ranking' ? 'ranking' : 'latest'
+  )
+  const [tag, setTag] = useState(() => searchParams.get('tag') ?? '')
 
   const [profiles, setProfiles] = useState<ProfileRow[]>([])
-  const [containers, setContainers] = useState<PostRow[]>([])
+  const [challenges, setChallenges] = useState<PostRow[]>([])
   const [loading, setLoading] = useState(false)
 
   const syncUrl = useCallback(() => {
     const p = new URLSearchParams()
     const trimmed = q.trim()
     if (trimmed) p.set('q', trimmed)
-    if (scope !== 'all') p.set('scope', scope)
-    if (scope !== 'profiles' && difficulty !== 'all') p.set('difficulty', difficulty)
+    if (scope !== 'all') p.set('scope', scope === 'challenges' ? 'challenges' : scope)
+    if ((scope === 'challenges' || scope === 'all') && difficulty !== 'all') p.set('difficulty', difficulty)
+    if ((scope === 'challenges' || scope === 'all') && sort !== 'latest') p.set('sort', sort)
+    if ((scope === 'challenges' || scope === 'all') && tag.trim()) p.set('tag', tag.trim())
     const qs = p.toString()
     router.replace(qs ? `/search?${qs}` : '/search', { scroll: false })
-  }, [q, scope, difficulty, router])
+  }, [q, scope, difficulty, sort, tag, router])
 
   useEffect(() => {
     const t = setTimeout(syncUrl, 280)
@@ -62,20 +76,25 @@ export default function SearchClient() {
   useEffect(() => {
     let cancelled = false
     const term = q.trim()
-    if (!term) {
-      setProfiles([])
-      setContainers([])
-      return
+    const tagTrim = tag.trim().toLowerCase()
+
+    const normalizePostRow = (row: Record<string, unknown>): PostRow => {
+      const pr = row.profiles
+      const prof = Array.isArray(pr) ? pr[0] : pr
+      return {
+        ...row,
+        profiles: prof as PostRow['profiles'],
+      } as PostRow
     }
 
     const run = async () => {
       setLoading(true)
       const supabase = createClient()
-      const inner = escapeIlikePattern(term)
-      const pat = `%${inner}%`
 
       try {
-        if (scope === 'profiles' || scope === 'all') {
+        if (term && (scope === 'profiles' || scope === 'all')) {
+          const inner = escapeIlikePattern(term)
+          const pat = `%${inner}%`
           const { data, error } = await supabase
             .from('profiles')
             .select('id, username, full_name, avatar_url, bio')
@@ -89,29 +108,43 @@ export default function SearchClient() {
           setProfiles([])
         }
 
-        if (scope === 'containers' || scope === 'all') {
+        if (scope === 'challenges' || scope === 'all') {
           let query = supabase
             .from('posts')
-            .select('id, title, description, difficulty, content_url, tags, profiles!user_id(username, full_name)')
-            .or(`title.ilike.${pat},description.ilike.${pat}`)
+            .select(
+              'id, title, description, difficulty, content_url, tags, created_at, number_of_completions, average_rating, ratings_count, profiles!user_id(username, full_name)'
+            )
+
+          if (term) {
+            const inner = escapeIlikePattern(term)
+            const pat = `%${inner}%`
+            query = query.or(`title.ilike.${pat},description.ilike.${pat}`)
+          }
+
           if (difficulty !== 'all') {
             query = query.eq('difficulty', difficulty)
           }
-          const { data, error } = await query.order('created_at', { ascending: false }).limit(50)
+
+          if (sort === 'latest') {
+            query = query.order('created_at', { ascending: false })
+          } else {
+            query = query
+              .order('average_rating', { ascending: false, nullsFirst: false })
+              .order('number_of_completions', { ascending: false })
+          }
+
+          const fetchLimit = term || tagTrim ? 120 : 80
+          const { data, error } = await query.limit(fetchLimit)
           if (!cancelled) {
             if (error) console.error(error)
-            const rows = (data ?? []).map((row) => {
-              const pr = row.profiles
-              const prof = Array.isArray(pr) ? pr[0] : pr
-              return {
-                ...row,
-                profiles: prof as PostRow['profiles'],
-              } as PostRow
-            })
-            setContainers(rows)
+            let rows = (data ?? []).map((row) => normalizePostRow(row as Record<string, unknown>))
+            if (tagTrim) {
+              rows = rows.filter((r) => r.tags?.some((x) => x.toLowerCase() === tagTrim))
+            }
+            setChallenges(rows.slice(0, 50))
           }
         } else if (!cancelled) {
-          setContainers([])
+          setChallenges([])
         }
       } finally {
         if (!cancelled) setLoading(false)
@@ -122,30 +155,33 @@ export default function SearchClient() {
     return () => {
       cancelled = true
     }
-  }, [q, scope, difficulty])
+  }, [q, scope, difficulty, sort, tag])
+
+  const showChallengeFilters = scope === 'challenges' || scope === 'all'
+  const term = q.trim()
 
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6">
-      <h1 className="text-2xl font-bold text-foreground mb-6">Search</h1>
+      <h1 className="mb-6 text-2xl font-bold text-foreground">Search</h1>
 
-      <div className="space-y-4 mb-8">
+      <div className="mb-8 space-y-4">
         <input
           type="search"
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search by name, username, challenge title…"
-          className="w-full rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring outline-none"
+          className="w-full rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
           autoComplete="off"
         />
 
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Show</span>
+          <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Show</span>
           <div className="flex flex-wrap gap-2">
             {(
               [
                 ['all', 'All'],
                 ['profiles', 'Profiles'],
-                ['containers', 'Containers'],
+                ['challenges', 'Challenges'],
               ] as const
             ).map(([value, label]) => (
               <button
@@ -164,52 +200,98 @@ export default function SearchClient() {
           </div>
         </div>
 
-        {(scope === 'containers' || scope === 'all') && (
-          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center border-t border-border pt-4">
-            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Challenge difficulty
-            </span>
-            <div className="flex flex-wrap gap-2">
-              {(
-                [
-                  ['all', 'Any'],
-                  ['easy', 'Easy'],
-                  ['medium', 'Medium'],
-                  ['hard', 'Hard'],
-                ] as const
-              ).map(([value, label]) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setDifficulty(value)}
-                  className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                    difficulty === value
-                      ? 'bg-secondary text-secondary-foreground ring-1 ring-border'
-                      : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
+        {showChallengeFilters && (
+          <div className="space-y-4 border-t border-border pt-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+              <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                Sort
+              </span>
+              <div className="flex flex-wrap gap-2">
+                {(
+                  [
+                    ['latest', 'Latest'],
+                    ['ranking', 'Ranking'],
+                  ] as const
+                ).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setSort(value)}
+                    className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                      sort === value
+                        ? 'bg-secondary text-secondary-foreground ring-1 ring-border'
+                        : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+              <label htmlFor="search-tag" className="text-xs font-semibold tracking-wide text-muted-foreground uppercase shrink-0">
+                Tags
+              </label>
+              <input
+                id="search-tag"
+                type="text"
+                value={tag}
+                onChange={(e) => setTag(e.target.value)}
+                placeholder="e.g. docker (matches one tag, case-insensitive)"
+                className="h-10 w-full min-w-0 flex-1 rounded-lg border border-input bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                autoComplete="off"
+              />
+            </div>
+
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+              <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                Difficulty
+              </span>
+              <div className="flex flex-wrap gap-2">
+                {(
+                  [
+                    ['all', 'Any'],
+                    ['easy', 'Easy'],
+                    ['medium', 'Medium'],
+                    ['hard', 'Hard'],
+                  ] as const
+                ).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setDifficulty(value)}
+                    className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                      difficulty === value
+                        ? 'bg-secondary text-secondary-foreground ring-1 ring-border'
+                        : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         )}
       </div>
 
-      {!q.trim() && (
-        <p className="text-sm text-muted-foreground text-center py-12">Type a query to search profiles and challenges.</p>
-      )}
-
-      {q.trim() && loading && (
-        <p className="text-sm text-muted-foreground text-center py-8">Searching…</p>
-      )}
-
-      {q.trim() && !loading && (
+      {loading ? (
+        <p className="py-12 text-center text-sm text-muted-foreground">
+          {term ? 'Searching…' : 'Loading…'}
+        </p>
+      ) : (
         <div className="space-y-10">
-          {(scope === 'all' || scope === 'profiles') && (
+          {scope === 'profiles' && !term && (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              Type a query to search profiles.
+            </p>
+          )}
+
+          {term && (scope === 'all' || scope === 'profiles') && (
             <section>
-              <h2 className="text-lg font-semibold mb-3 text-foreground">
-                Profiles <span className="text-muted-foreground font-normal">({profiles.length})</span>
+              <h2 className="mb-3 text-lg font-semibold text-foreground">
+                Profiles <span className="font-normal text-muted-foreground">({profiles.length})</span>
               </h2>
               {profiles.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No matching profiles.</p>
@@ -220,16 +302,20 @@ export default function SearchClient() {
                       {p.username ? (
                         <Link
                           href={`/u/${encodeURIComponent(p.username)}`}
-                          className="block rounded-xl border border-border bg-card p-4 hover:bg-muted/40 transition-colors"
+                          className="block rounded-xl border border-border bg-card p-4 transition-colors hover:bg-muted/40"
                         >
                           <span className="font-medium text-foreground">{p.full_name || p.username}</span>
-                          <span className="text-muted-foreground text-sm ml-2">@{p.username}</span>
-                          {p.bio && <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{p.bio}</p>}
+                          <span className="ml-2 text-sm text-muted-foreground">@{p.username}</span>
+                          {p.bio && (
+                            <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{p.bio}</p>
+                          )}
                         </Link>
                       ) : (
                         <div className="rounded-xl border border-border bg-card p-4">
                           <span className="font-medium text-foreground">{p.full_name || 'User'}</span>
-                          {p.bio && <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{p.bio}</p>}
+                          {p.bio && (
+                            <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{p.bio}</p>
+                          )}
                         </div>
                       )}
                     </li>
@@ -239,33 +325,56 @@ export default function SearchClient() {
             </section>
           )}
 
-          {(scope === 'all' || scope === 'containers') && (
+          {(scope === 'all' || scope === 'challenges') && (
             <section>
-              <h2 className="text-lg font-semibold mb-3 text-foreground">
-                Challenges <span className="text-muted-foreground font-normal">({containers.length})</span>
+              <h2 className="mb-3 text-lg font-semibold text-foreground">
+                Challenges{' '}
+                <span className="font-normal text-muted-foreground">({challenges.length})</span>
               </h2>
-              {containers.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No matching challenges.</p>
+              {challenges.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  {term ? 'No matching challenges.' : 'No challenges yet.'}
+                </p>
               ) : (
                 <ul className="space-y-2">
-                  {containers.map((c) => (
+                  {challenges.map((c) => (
                     <li key={c.id}>
                       <Link
                         href={`/challenge/${c.id}`}
-                        className="block rounded-xl border border-border bg-card p-4 hover:bg-muted/40 transition-colors"
+                        className="block rounded-xl border border-border bg-card p-4 transition-colors hover:bg-muted/40"
                       >
                         <div className="flex items-start justify-between gap-2">
                           <span className="font-medium text-foreground">{c.title}</span>
-                          <span className="text-[10px] uppercase font-bold shrink-0 rounded-full bg-muted px-2 py-0.5 text-muted-foreground">
+                          <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold text-muted-foreground uppercase">
                             {c.difficulty || 'medium'}
                           </span>
                         </div>
                         {c.description && (
-                          <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{c.description}</p>
+                          <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{c.description}</p>
                         )}
-                        <p className="text-xs text-muted-foreground mt-2">
-                          by {c.profiles?.full_name || c.profiles?.username || 'Unknown'}
-                        </p>
+                        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                          <span>by {c.profiles?.full_name || c.profiles?.username || 'Unknown'}</span>
+                          {c.average_rating != null && (
+                            <span>
+                              ★ {c.average_rating.toFixed(1)}
+                              {c.ratings_count != null && c.ratings_count > 0
+                                ? ` (${c.ratings_count})`
+                                : ''}
+                            </span>
+                          )}
+                          {c.number_of_completions != null && c.number_of_completions > 0 && (
+                            <span>{c.number_of_completions} completions</span>
+                          )}
+                        </div>
+                        {c.tags && c.tags.length > 0 && (
+                          <p className="mt-2 text-xs text-muted-foreground">
+                            {c.tags.map((t) => (
+                              <span key={t} className="mr-2 inline-block rounded-md bg-muted/80 px-2 py-0.5">
+                                {t}
+                              </span>
+                            ))}
+                          </p>
+                        )}
                       </Link>
                     </li>
                   ))}
