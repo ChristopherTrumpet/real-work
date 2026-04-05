@@ -14,11 +14,15 @@ export async function updateProfile(formData: FormData) {
     throw new Error('User not found')
   }
 
+  const avatarRaw = formData.get('avatar_url')
+  const avatar_url =
+    typeof avatarRaw === 'string' && avatarRaw.trim() ? avatarRaw.trim() : null
+
   const updates = {
     id: user.id,
     username: formData.get('username') as string,
     full_name: formData.get('full_name') as string,
-    avatar_url: formData.get('avatar_url') as string,
+    avatar_url,
     bio: formData.get('bio') as string,
     website: formData.get('website') as string,
     updated_at: new Date().toISOString(),
@@ -31,6 +35,7 @@ export async function updateProfile(formData: FormData) {
   }
 
   revalidatePath('/profile')
+  revalidatePath('/', 'layout')
 }
 
 export async function deleteAccount() {
