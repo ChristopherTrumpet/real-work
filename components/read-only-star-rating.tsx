@@ -43,15 +43,62 @@ function FractionalStar({
   )
 }
 
+export type RatingBreakdown = readonly [number, number, number, number, number]
+
+/** Counts per star value from `post_ratings` rows (index 0 = 1★ … index 4 = 5★). */
+export function ratingRowsToBreakdown(rows: { rating: number }[] | null | undefined): RatingBreakdown {
+  const c: [number, number, number, number, number] = [0, 0, 0, 0, 0]
+  for (const row of rows ?? []) {
+    const v = Number(row.rating)
+    if (v >= 1 && v <= 5) c[v - 1] += 1
+  }
+  return c
+}
+
+function RatingBreakdownBars({ counts }: { counts: RatingBreakdown }) {
+  const total = counts.reduce((a, b) => a + b, 0)
+  const max = Math.max(...counts, 1)
+
+  return (
+    <div className="mt-4 space-y-2" aria-label="Rating breakdown by star value">
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Breakdown</p>
+      <ul className="space-y-1.5">
+        {[5, 4, 3, 2, 1].map((star) => {
+          const n = counts[star - 1]
+          const barPct = total === 0 ? 0 : (n / max) * 100
+          return (
+            <li key={star} className="grid grid-cols-[1.75rem_1fr_2rem] items-center gap-2 text-xs">
+              <span className="tabular-nums text-muted-foreground">{star}★</span>
+              <div
+                className="h-2 overflow-hidden rounded-full bg-muted"
+                title={`${n} rating${n === 1 ? '' : 's'}`}
+              >
+                <div
+                  className="h-full rounded-full bg-amber-500/80 transition-[width] dark:bg-amber-500/70"
+                  style={{ width: `${barPct}%` }}
+                />
+              </div>
+              <span className="text-right tabular-nums text-muted-foreground">{n}</span>
+            </li>
+          )
+        })}
+      </ul>
+    </div>
+  )
+}
+
 /** Aggregate community rating for display (e.g. before or during a challenge). */
 export function ReadOnlyStarRating({
   averageRating,
   ratingsCount,
+  countsByStar,
   className,
   size = 'md',
 }: {
   averageRating: number | null | undefined
   ratingsCount?: number | null | undefined
+  /** Optional per-star counts [1★, 2★, 3★, 4★, 5★]; enables breakdown bars. */
+  countsByStar?: RatingBreakdown
   className?: string
   size?: 'sm' | 'md'
 }) {
@@ -93,6 +140,7 @@ export function ReadOnlyStarRating({
           <>No ratings yet</>
         )}
       </p>
+      {countsByStar != null && <RatingBreakdownBars counts={countsByStar} />}
     </div>
   )
 }

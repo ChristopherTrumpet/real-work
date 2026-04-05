@@ -150,6 +150,7 @@ export function CommentThread({
   readOnly = false,
   title = 'Discussion',
   compact = false,
+  embedded = false,
 }: {
   postId: string
   flatComments: Array<{
@@ -166,6 +167,8 @@ export function CommentThread({
   title?: string
   /** Tighter spacing for narrow sidebars. */
   compact?: boolean
+  /** When true, no top border/margin (e.g. inside another card); keeps full-size typography unless `compact`. */
+  embedded?: boolean
 }) {
   const router = useRouter()
   const [pending, setPending] = useState(false)
@@ -185,9 +188,10 @@ export function CommentThread({
     router.refresh()
   }
 
-  const sectionClass = compact
-    ? 'mt-0 border-0 pt-0'
-    : 'mt-10 border-t border-border pt-8'
+  const sectionClass =
+    compact || embedded
+      ? 'mt-0 border-0 pt-0'
+      : 'mt-10 border-t border-border pt-8'
 
   return (
     <section className={sectionClass}>

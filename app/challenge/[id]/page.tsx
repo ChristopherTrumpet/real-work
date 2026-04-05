@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import { createClient } from '@/utils/supabase/server'
 import { deployContainer } from '@/app/actions/docker'
 import { CommentThread } from '@/components/CommentThread'
-import { ReadOnlyStarRating } from '@/components/read-only-star-rating'
+import { ReadOnlyStarRating, ratingRowsToBreakdown } from '@/components/read-only-star-rating'
 import fs from 'fs'
 import path from 'path'
 
@@ -61,6 +61,9 @@ export default async function ChallengePage({ params }: PageProps) {
 
   const canDiscuss = Boolean(user && userCompletion)
 
+  const { data: ratingRows } = await supabase.from('post_ratings').select('rating').eq('post_id', id)
+  const ratingBreakdown = ratingRowsToBreakdown(ratingRows ?? [])
+
   const author = post.profiles as { username: string | null; full_name: string | null } | null
 
   return (
@@ -70,122 +73,130 @@ export default async function ChallengePage({ params }: PageProps) {
       </Link>
 
       <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:gap-10">
-      <article className="min-w-0 flex-1 rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">{post.title}</h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              by{' '}
-              {author?.username ? (
-                <Link href={`/u/${encodeURIComponent(author.username)}`} className="text-primary font-medium hover:underline">
-                  {author.full_name || author.username}
-                </Link>
-              ) : (
-                <span>{author?.full_name || 'Unknown'}</span>
+        <div className="flex min-w-0 flex-1 flex-col gap-8">
+          <article className="rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <h1 className="text-2xl font-bold text-foreground">{post.title}</h1>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  by{' '}
+                  {author?.username ? (
+                    <Link
+                      href={`/u/${encodeURIComponent(author.username)}`}
+                      className="font-medium text-primary hover:underline"
+                    >
+                      {author.full_name || author.username}
+                    </Link>
+                  ) : (
+                    <span>{author?.full_name || 'Unknown'}</span>
+                  )}
+                </p>
+              </div>
+              <span
+                className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-wider ${
+                  post.difficulty === 'easy'
+                    ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400'
+                    : post.difficulty === 'hard'
+                      ? 'bg-rose-500/15 text-rose-700 dark:text-rose-400'
+                      : 'bg-amber-500/15 text-amber-800 dark:text-amber-300'
+                }`}
+              >
+                {post.difficulty || 'medium'}
+              </span>
+            </div>
+
+            {post.description && <p className="mt-4 text-foreground/90 whitespace-pre-wrap">{post.description}</p>}
+
+            {post.tags && post.tags.length > 0 && (
+              <div className="mt-4 flex flex-wrap gap-1.5">
+                {post.tags.map((tag: string, i: number) => (
+                  <span key={i} className="rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                    #{tag}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            <div className="mt-6 flex flex-wrap gap-4 text-sm text-muted-foreground">
+              <span>{post.number_of_completions ?? 0} solves</span>
+              {post.content_url && (
+                <code className="rounded bg-muted px-2 py-0.5 text-xs">{post.content_url}</code>
               )}
+            </div>
+
+            {user && (
+              <div className="mt-8 flex flex-wrap gap-2">
+                {hasSession ? (
+                  <>
+                    <form action={deployContainer}>
+                      <input type="hidden" name="image" value={post.content_url ?? ''} />
+                      <input type="hidden" name="postId" value={post.id} />
+                      <input type="hidden" name="userId" value={user.id} />
+                      <input type="hidden" name="actionType" value="resume" />
+                      <button
+                        type="submit"
+                        className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+                      >
+                        Resume
+                      </button>
+                    </form>
+                    <form action={deployContainer}>
+                      <input type="hidden" name="image" value={post.content_url ?? ''} />
+                      <input type="hidden" name="postId" value={post.id} />
+                      <input type="hidden" name="userId" value={user.id} />
+                      <input type="hidden" name="actionType" value="restart" />
+                      <button
+                        type="submit"
+                        className="rounded-lg bg-destructive/90 px-4 py-2 text-sm font-semibold text-destructive-foreground hover:bg-destructive"
+                      >
+                        Reclone
+                      </button>
+                    </form>
+                  </>
+                ) : (
+                  <form action={deployContainer}>
+                    <input type="hidden" name="image" value={post.content_url ?? ''} />
+                    <input type="hidden" name="postId" value={post.id} />
+                    <input type="hidden" name="userId" value={user.id} />
+                    <input type="hidden" name="actionType" value="launch" />
+                    <button
+                      type="submit"
+                      className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+                    >
+                      Launch challenge
+                    </button>
+                  </form>
+                )}
+              </div>
+            )}
+          </article>
+
+          <section className="rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8">
+            <CommentThread
+              postId={post.id}
+              flatComments={flatComments}
+              currentUserId={user?.id ?? null}
+              readOnly={!canDiscuss}
+              title="Discussion"
+              embedded
+            />
+          </section>
+        </div>
+
+        <aside className="w-full shrink-0 lg:sticky lg:top-20 lg:w-[min(100%,380px)] lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+            <ReadOnlyStarRating
+              averageRating={post.average_rating}
+              ratingsCount={post.ratings_count}
+              countsByStar={ratingBreakdown}
+              className="border-b border-border pb-5"
+            />
+            <p className="mt-4 text-xs text-muted-foreground">
+              Star ratings are submitted on the completion page after you finish. Solvers can discuss in the section
+              below the challenge.
             </p>
           </div>
-          <span
-            className={`text-[10px] font-bold uppercase tracking-wider rounded-full px-2 py-1 ${
-              post.difficulty === 'easy'
-                ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400'
-                : post.difficulty === 'hard'
-                  ? 'bg-rose-500/15 text-rose-700 dark:text-rose-400'
-                  : 'bg-amber-500/15 text-amber-800 dark:text-amber-300'
-            }`}
-          >
-            {post.difficulty || 'medium'}
-          </span>
-        </div>
-
-        {post.description && <p className="mt-4 text-foreground/90 whitespace-pre-wrap">{post.description}</p>}
-
-        {post.tags && post.tags.length > 0 && (
-          <div className="mt-4 flex flex-wrap gap-1.5">
-            {post.tags.map((tag: string, i: number) => (
-              <span key={i} className="rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                #{tag}
-              </span>
-            ))}
-          </div>
-        )}
-
-        <div className="mt-6 flex flex-wrap gap-4 text-sm text-muted-foreground">
-          <span>{post.number_of_completions ?? 0} solves</span>
-          {post.content_url && (
-            <code className="rounded bg-muted px-2 py-0.5 text-xs">{post.content_url}</code>
-          )}
-        </div>
-
-        {user && (
-          <div className="mt-8 flex flex-wrap gap-2">
-            {hasSession ? (
-              <>
-                <form action={deployContainer}>
-                  <input type="hidden" name="image" value={post.content_url ?? ''} />
-                  <input type="hidden" name="postId" value={post.id} />
-                  <input type="hidden" name="userId" value={user.id} />
-                  <input type="hidden" name="actionType" value="resume" />
-                  <button
-                    type="submit"
-                    className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
-                  >
-                    Resume
-                  </button>
-                </form>
-                <form action={deployContainer}>
-                  <input type="hidden" name="image" value={post.content_url ?? ''} />
-                  <input type="hidden" name="postId" value={post.id} />
-                  <input type="hidden" name="userId" value={user.id} />
-                  <input type="hidden" name="actionType" value="restart" />
-                  <button
-                    type="submit"
-                    className="rounded-lg bg-destructive/90 px-4 py-2 text-sm font-semibold text-destructive-foreground hover:bg-destructive"
-                  >
-                    Reclone
-                  </button>
-                </form>
-              </>
-            ) : (
-              <form action={deployContainer}>
-                <input type="hidden" name="image" value={post.content_url ?? ''} />
-                <input type="hidden" name="postId" value={post.id} />
-                <input type="hidden" name="userId" value={user.id} />
-                <input type="hidden" name="actionType" value="launch" />
-                <button
-                  type="submit"
-                  className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
-                >
-                  Launch challenge
-                </button>
-              </form>
-            )}
-          </div>
-        )}
-      </article>
-
-      <aside className="w-full shrink-0 lg:sticky lg:top-20 lg:w-[min(100%,380px)] lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-          <ReadOnlyStarRating
-            averageRating={post.average_rating}
-            ratingsCount={post.ratings_count}
-            className="border-b border-border pb-5"
-          />
-          <p className="mt-4 text-xs text-muted-foreground">
-            Star ratings are submitted on the completion page after you finish. Solvers can discuss below.
-          </p>
-        </div>
-        <div className="mt-4 rounded-2xl border border-border bg-card p-5 shadow-sm">
-          <CommentThread
-            postId={post.id}
-            flatComments={flatComments}
-            currentUserId={user?.id ?? null}
-            readOnly={!canDiscuss}
-            title="Discussion"
-            compact
-          />
-        </div>
-      </aside>
+        </aside>
       </div>
     </main>
   )
