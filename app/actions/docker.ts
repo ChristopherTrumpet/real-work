@@ -6,8 +6,31 @@ import { redirect } from 'next/navigation'
 import net from 'net'
 import fs from 'fs'
 import path from 'path'
+import { createClient } from '@/utils/supabase/server'
+
+import { revalidatePath } from 'next/cache'
 
 const execAsync = promisify(exec)
+
+export async function resetProgress(postId: string, userId: string) {
+  if (!postId || !userId) return { success: false }
+  
+  const progressTag = `realwork-progress:${userId}-${postId}`
+  try {
+    await execAsync(`docker rmi -f ${progressTag}`)
+  } catch (e) {
+    // Image might not exist, that's fine
+  }
+  
+  const localPath = path.join(process.cwd(), 'container_data', userId, postId)
+  if (fs.existsSync(localPath)) {
+    fs.rmSync(localPath, { recursive: true, force: true })
+  }
+  
+  revalidatePath('/')
+  revalidatePath(`/challenge/${postId}`)
+  return { success: true }
+}
 
 export async function isContainerReady(port: number): Promise<boolean> {
   return new Promise((resolve) => {
@@ -29,9 +52,12 @@ export async function isContainerReady(port: number): Promise<boolean> {
 }
 
 export async function deployContainer(formData: FormData) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  
   const image = formData.get('image') as string
   const postId = formData.get('postId') as string
-  const userId = formData.get('userId') as string
+  const userId = (formData.get('userId') as string) || user?.id
   const actionType = formData.get('actionType') as string || 'launch'
   const internalPort = '3000'
 
@@ -44,84 +70,44 @@ export async function deployContainer(formData: FormData) {
 
   let hostPort = ''
   let containerId = ''
-  let volumeMount = ''
-  let workdir = '/config' // Default to /config for these types of images
+  let imageToRun = image
   
   try {
-    // 0. Pull image if it's a cloud image
-    if (isCloudImage) {
+    // 0. Pull image if it's a cloud image and we don't have progress
+    if (isCloudImage && actionType !== 'resume') {
       console.log(`Pulling image from cloud registry: ${image}`)
       await execAsync(`docker pull ${image}`)
     }
 
-    // 1. Determine the correct working directory for the image (for all users)
-    try {
-      const { stdout: inspectStdout } = await execAsync(`docker inspect --format="{{.Config.WorkingDir}}" ${image}`)
-      const trimmedWorkdir = inspectStdout.trim().replace(/^['"]|['"]$/g, '')
-      
-      if (trimmedWorkdir && trimmedWorkdir !== '/') {
-        workdir = trimmedWorkdir
-      } else {
-        // Fallback to checking for a defined Volume if WorkingDir isn't useful
-        const { stdout: volStdout } = await execAsync(`docker inspect --format="{{json .Config.Volumes}}" ${image}`)
-        const volumes = JSON.parse(volStdout)
-        const volKeys = Object.keys(volumes)
-        if (volKeys.length > 0) {
-          // Prefer /config if it exists, otherwise take the first one
-          workdir = volKeys.includes('/config') ? '/config' : volKeys[0]
-        }
+    // 1. Check for saved progress image if resuming
+    if (userId && postId && actionType !== 'restart') {
+      const progressTag = `realwork-progress:${userId}-${postId}`
+      try {
+        await execAsync(`docker image inspect ${progressTag}`)
+        imageToRun = progressTag
+        console.log(`Resuming from saved progress image: ${progressTag}`)
+      } catch (e) {
+        // Progress image doesn't exist, will use original image
       }
-    } catch(e) {
-      console.warn('Could not inspect image, defaulting workdir to /config.')
     }
 
-    // 2. Handle persistent session ONLY if logged in
-    if (userId && postId) {
-      const localPath = path.join(process.cwd(), 'container_data', userId, postId)
-      
-      if (actionType === 'restart') {
-        fs.rmSync(localPath, { recursive: true, force: true })
-      }
-
-      if (!fs.existsSync(localPath)) {
-        fs.mkdirSync(localPath, { recursive: true })
-        try {
-          const { stdout: createStdout } = await execAsync(`docker create ${image}`)
-          const tmpId = createStdout.trim()
-          await execAsync(`docker cp ${tmpId}:${workdir}/. "${localPath}/"`)
-          await execAsync(`docker rm -v ${tmpId}`)
-        } catch (e) {
-          console.error('Failed to extract initial files from image:', e)
-        }
-      }
-      
-      volumeMount = `-v "${localPath}:${workdir}"`
-    }
-
-    // 3. Start the container
-    const runCmd = `docker run -d --shm-size="1gb" -p 0:${internalPort} ${volumeMount} ${image}`
+    // 2. Start the container (no volume mount needed as we use commit)
+    const runCmd = `docker run -d --shm-size="1gb" -p 0:${internalPort} ${imageToRun}`
     const { stdout: runStdout } = await execAsync(runCmd)
     containerId = runStdout.trim()
 
-    // 4. Fix permissions for the determined workdir (for all users)
-    let permSuccess = false;
-    for (let i = 0; i < 5; i++) {
-      try {
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        const chmodCmd = `docker exec -u root ${containerId} chmod -R 777 ${workdir}`
-        await execAsync(chmodCmd)
-        permSuccess = true;
-        break; 
-      } catch (permError: any) {
-        console.warn(`Attempt ${i + 1} to fix permissions failed:`, permError.message || permError)
-      }
-    }
-    
-    if (!permSuccess) {
-      console.error('Failed to update container permissions after multiple attempts.')
+    // 3. Fix permissions for common workdirs (best effort)
+    try {
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      // Try common paths
+      await execAsync(`docker exec -u root ${containerId} chmod -R 777 /config || true`)
+      await execAsync(`docker exec -u root ${containerId} chmod -R 777 /app || true`)
+      await execAsync(`docker exec -u root ${containerId} chmod -R 777 /workspace || true`)
+    } catch (permError) {
+      console.warn('Could not update container permissions.')
     }
 
-    // 5. Get assigned port
+    // 4. Get assigned port
     const portCmd = `docker port ${containerId} ${internalPort}`
     const { stdout: portStdout } = await execAsync(portCmd)
     
@@ -155,7 +141,7 @@ export async function getContainerIdByPort(port: number): Promise<string | null>
   }
 }
 
-export async function killContainer(port: number): Promise<{ success: boolean; message: string }> {
+export async function killContainer(port: number, saveContext?: { userId: string, postId: string }): Promise<{ success: boolean; message: string }> {
   if (!port) {
     return { success: false, message: 'Port not provided.' }
   }
@@ -169,14 +155,22 @@ export async function killContainer(port: number): Promise<{ success: boolean; m
     }
 
     const trimmedId = findId.trim()
-    // Stop and remove the container
+
+    // 1. If save context provided, commit the container state to an image
+    if (saveContext?.userId && saveContext?.postId) {
+      const progressTag = `realwork-progress:${saveContext.userId}-${saveContext.postId}`
+      console.log(`Saving container ${trimmedId} to image ${progressTag}...`)
+      await execAsync(`docker commit ${trimmedId} ${progressTag}`)
+    }
+
+    // 2. Stop and remove the container
     const stopCmd = `docker stop ${trimmedId}`
     await execAsync(stopCmd)
     
     const rmCmd = `docker rm ${trimmedId}`
     await execAsync(rmCmd)
 
-    return { success: true, message: `Container ${trimmedId} on port ${port} has been stopped and removed.` }
+    return { success: true, message: `Container ${trimmedId} on port ${port} has been saved and removed.` }
   } catch (error: any) {
     console.error('Docker Kill Error:', error)
     return { success: false, message: error.stderr || error.message }

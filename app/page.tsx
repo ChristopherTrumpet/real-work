@@ -26,7 +26,7 @@ export default async function Home() {
   // Fetch top 5 by rating
   const { data: topChallenges, error: fetchError } = await supabase
     .from('posts')
-    .select('*, profiles!user_id(username, full_name)')
+    .select('*, profiles!user_id(username, full_name, avatar_url)')
     .order('average_rating', { ascending: false, nullsFirst: false })
     .order('ratings_count', { ascending: false })
     .limit(5)

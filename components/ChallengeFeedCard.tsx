@@ -1,7 +1,8 @@
 import Link from 'next/link'
 import { deployContainer } from '@/app/actions/docker'
+import { ResetProgressButton } from './ResetProgressButton'
 
-type Profile = { username: string | null; full_name: string | null } | null
+type Profile = { username: string | null; full_name: string | null; avatar_url?: string | null } | null
 
 export type ChallengeFeedItem = {
   id: string
@@ -105,61 +106,57 @@ export function ChallengeFeedCard({
                     <input type="hidden" name="actionType" value="resume" />
                     <button
                       type="submit"
-                      className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+                      className="w-full cursor-pointer rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
                     >
                       Resume
                     </button>
-                  </form>
-                  <form action={deployContainer} className="min-w-[7.5rem]">
-                    <input type="hidden" name="image" value={container.content_url ?? ''} />
-                    <input type="hidden" name="postId" value={container.id} />
-                    {userId && <input type="hidden" name="userId" value={userId} />}
-                    <input type="hidden" name="actionType" value="restart" />
-                    <button
-                      type="submit"
-                      className="w-full rounded-lg border border-border bg-transparent px-4 py-2.5 text-sm font-semibold text-muted-foreground transition-colors hover:border-destructive/40 hover:bg-destructive/5 hover:text-destructive"
-                      title="Reset workspace from image"
+                    </form>
+                    {userId && (
+                    <ResetProgressButton 
+                      postId={container.id} 
+                      userId={userId} 
+                      className="w-full cursor-pointer rounded-lg border border-border bg-transparent px-4 py-2.5 text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted"
+                    />
+                    )}
+                    </>
+                    ) : (                    <Link
+                    href={`/challenge/${container.id}`}
+                    className="inline-flex min-w-[7.5rem] cursor-pointer items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
                     >
-                      Reset
-                    </button>
-                  </form>
-                </>
-              ) : (
-                <form action={deployContainer} className="min-w-[7.5rem]">
-                  <input type="hidden" name="image" value={container.content_url ?? ''} />
-                  <input type="hidden" name="postId" value={container.id} />
-                  {userId && <input type="hidden" name="userId" value={userId} />}
-                  <input type="hidden" name="actionType" value="launch" />
-                  <button
-                    type="submit"
-                    className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
-                  >
-                    Open
-                  </button>
-                </form>
-              )}
-            </div>
+                    Open Challenge
+                    </Link>
+                    )}            </div>
           </div>
 
           <footer className="mt-5 flex flex-col gap-2 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex min-w-0 items-center gap-2">
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">
-                {(container.profiles?.username?.[0] || 'U').toUpperCase()}
-              </div>
               {container.profiles?.username ? (
                 <Link
                   href={`/u/${encodeURIComponent(container.profiles.username)}`}
-                  className="truncate text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
+                  className="flex items-center gap-2 group/author shrink-0"
                 >
-                  {container.profiles?.full_name || container.profiles.username}
+                  <div className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted text-xs font-semibold text-muted-foreground transition-colors group-hover/author:bg-primary/10 group-hover/author:text-primary">
+                    {container.profiles.avatar_url ? (
+                      <img src={container.profiles.avatar_url} alt={container.profiles.username} className="h-full w-full object-cover" />
+                    ) : (
+                      (container.profiles.username[0] || 'U').toUpperCase()
+                    )}
+                  </div>
+                  <span className="truncate text-sm font-medium text-muted-foreground transition-colors group-hover/author:text-primary">
+                    {container.profiles?.full_name || container.profiles.username}
+                  </span>
                 </Link>
               ) : (
-                <span className="truncate text-sm font-medium text-muted-foreground">
-                  {container.profiles?.full_name || 'Anonymous'}
-                </span>
+                <div className="flex items-center gap-2">
+                  <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">
+                    U
+                  </div>
+                  <span className="truncate text-sm font-medium text-muted-foreground">
+                    {container.profiles?.full_name || 'Anonymous'}
+                  </span>
+                </div>
               )}
-            </div>
-            {container.content_url && (
+            </div>            {container.content_url && (
               <code className="hidden max-w-[220px] truncate rounded-md bg-muted/80 px-2 py-1 font-mono text-[10px] text-muted-foreground sm:block">
                 {container.content_url}
               </code>
