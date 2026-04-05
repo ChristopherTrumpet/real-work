@@ -2,7 +2,6 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/utils/supabase/server'
 import { updateProfile, deleteAccount } from './actions'
-import DifficultyWheel from '@/components/DifficultyWheel'
 import { DeleteChallengeButton } from '@/components/profile/delete-challenge-button'
 
 export default async function ProfilePage() {
@@ -19,11 +18,6 @@ export default async function ProfilePage() {
     .select('*')
     .eq('id', user.id)
     .single()
-
-  // Fetch some stats for the user
-  const { count: uploadsCount } = await supabase.from('posts').select('*', { count: 'exact', head: true }).eq('user_id', user.id)
-  const { data: probStats } = await supabase.from('user_problem_statistics').select('*').eq('user_id', user.id).maybeSingle()
-  const { data: rateStats } = await supabase.from('user_rating_statistics').select('*').eq('user_id', user.id).maybeSingle()
 
   const { data: myChallenges } = await supabase
     .from('posts')
@@ -49,73 +43,23 @@ export default async function ProfilePage() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
-        
-        {/* Left Column: Stats */}
-        <div className="flex flex-col gap-6 md:col-span-1">
-          <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-            <h2 className="mb-4 text-xl font-semibold tracking-tight text-foreground">Statistics</h2>
-            <div className="flex flex-col gap-4 mb-6">
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-muted-foreground">Uploads</span>
-                <span className="font-bold text-foreground">{uploadsCount || 0}</span>
-              </div>
-              <div className="flex justify-between items-center text-sm border-t border-border pt-3">
-                <span className="text-muted-foreground">Ratings given</span>
-                <span className="font-bold text-foreground">{rateStats?.ratings_given || 0}</span>
-              </div>
-              {rateStats?.average_stars_given != null && (
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-muted-foreground">Avg stars you give</span>
-                  <span className="font-bold text-foreground">
-                    {Number(rateStats.average_stars_given).toFixed(2)}
-                  </span>
-                </div>
-              )}
-            </div>
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">Solved by difficulty</h3>
-            <DifficultyWheel
-              easy={Number(probStats?.easy_solved ?? 0)}
-              medium={Number(probStats?.medium_solved ?? 0)}
-              hard={Number(probStats?.hard_solved ?? 0)}
-              centerLabel="Solved"
-              size={148}
-            />
-            {profile?.username && (
-              <Link
-                href={`/u/${encodeURIComponent(profile.username)}`}
-                className="mt-4 block text-center text-xs text-primary font-medium hover:underline"
-              >
-                View public profile →
-              </Link>
-            )}
-          </div>
-          
-          <form action="/auth/signout" method="post">
-            <button
-              type="submit"
-              className="w-full rounded-2xl border border-destructive/35 bg-destructive/10 py-3 text-sm font-semibold text-destructive transition-colors hover:bg-destructive/15"
-            >
-              Sign out
-            </button>
-          </form>
-
-          <form action={deleteAccount}>
-            <button
-              type="submit"
-              className="w-full rounded-2xl bg-destructive py-3 text-sm font-semibold text-destructive-foreground shadow-sm transition-colors hover:bg-destructive/90"
-            >
-              Delete account
-            </button>
-          </form>
-        </div>
-
-        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8 md:col-span-2">
+        <div className="flex flex-col gap-8">
+        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8">
           <h2 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">Account settings</h2>
           <p className="mt-2 text-sm text-muted-foreground">
             Logged in as{' '}
             <span className="font-medium text-foreground">{user.email}</span>
           </p>
+          {profile?.username && (
+            <p className="mt-2 text-sm text-muted-foreground">
+              <Link
+                href={`/u/${encodeURIComponent(profile.username)}`}
+                className="font-medium text-primary hover:underline"
+              >
+                View public profile →
+              </Link>
+            </p>
+          )}
 
           <form action={updateProfile} className="mt-8 flex flex-col gap-6">
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
@@ -167,9 +111,28 @@ export default async function ProfilePage() {
               Save changes
             </button>
           </form>
+
+          <div className="mt-10 flex flex-col gap-3 border-t border-border pt-8 sm:flex-row sm:gap-4">
+            <form action="/auth/signout" method="post" className="flex-1">
+              <button
+                type="submit"
+                className="w-full rounded-xl border border-destructive/35 bg-destructive/10 py-3 text-sm font-semibold text-destructive transition-colors hover:bg-destructive/15"
+              >
+                Sign out
+              </button>
+            </form>
+            <form action={deleteAccount} className="flex-1">
+              <button
+                type="submit"
+                className="w-full rounded-xl bg-destructive py-3 text-sm font-semibold text-destructive-foreground shadow-sm transition-colors hover:bg-destructive/90"
+              >
+                Delete account
+              </button>
+            </form>
+          </div>
         </div>
 
-        <section className="rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8 md:col-span-3">
+        <section className="rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8">
           <h2 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">Published challenges</h2>
           <p className="mt-2 text-sm text-muted-foreground">
             Challenges you have published. Deleting removes them for everyone.
