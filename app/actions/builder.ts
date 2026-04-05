@@ -1,15 +1,20 @@
 "use server";
 
-import { exec, spawn } from "child_process";
+import { exec, execFile, spawn } from "child_process";
 import { promisify } from "util";
 import fs from "fs/promises";
 import path from "path";
 import os from "os";
 import crypto from "crypto";
 import { createClient } from "@/utils/supabase/server";
+import {
+  createDockerCompletionEnvFile,
+  deleteDockerEnvFile,
+} from "@/lib/docker-run-env";
 import { initBuild, appendLog, finishBuild, failBuild } from "@/lib/build-logs";
 
 const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 export interface BuildDraftConfig {
   title: string;
@@ -91,6 +96,9 @@ async function runDraftBuildProcess(
   const { repoUrl, setupScript } = config;
   const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "draft-builder-"));
   const supabase = await createClient();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
 
   try {
     appendLog(buildId, `Preparing universal workspace environment...`, true);
@@ -205,12 +213,26 @@ ENTRYPOINT ["/entrypoint.sh"]
       });
     });
 
-    // 4. Provision the live container
+    // 4. Provision the live container (token + draft post id for /api/completion from inside the VM)
     appendLog(buildId, `Launching local instance...`, true);
     const internalPort = "3000";
-    const runCmd = `docker run -d --shm-size="1gb" -p 0:${internalPort} ${imageName}`;
-    const { stdout: runStdout } = await execAsync(runCmd);
-    const containerId = runStdout.trim();
+    let envFile: string | null = null;
+    let containerId = "";
+    try {
+      envFile = await createDockerCompletionEnvFile({
+        accessToken: session?.access_token,
+        postId,
+      });
+      const runArgs = ["run", "-d", "--shm-size=1gb", "-p", `0:${internalPort}`];
+      if (envFile) runArgs.push("--env-file", envFile);
+      runArgs.push(imageName);
+      const { stdout: runStdout } = await execFileAsync("docker", runArgs, {
+        maxBuffer: 10 * 1024 * 1024,
+      });
+      containerId = runStdout.trim();
+    } finally {
+      await deleteDockerEnvFile(envFile);
+    }
 
     await new Promise((resolve) => setTimeout(resolve, 5000));
 

@@ -17,6 +17,10 @@ import { createClient } from '@supabase/supabase-js'
  * The access token is the same JWT from `supabase.auth.getSession()` (or the
  * `access_token` field after password / OAuth sign-in). RLS requires the token
  * subject to match the row’s `user_id`.
+ *
+ * Challenge containers started via `deployContainer` / draft builder / studio also receive:
+ * - `REALWORK_SUPABASE_ACCESS_TOKEN` — raw JWT (use as `Authorization: Bearer <token>`)
+ * - `REALWORK_POST_ID` — UUID string (omit on generic studio sessions without a post)
  */
 
 function supabaseForRequest(accessToken: string) {

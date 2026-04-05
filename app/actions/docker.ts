@@ -1,16 +1,21 @@
 'use server'
 
-import { exec } from 'child_process'
+import { exec, execFile } from 'child_process'
 import { promisify } from 'util'
 import { redirect } from 'next/navigation'
 import net from 'net'
 import fs from 'fs'
 import path from 'path'
 import { createClient } from '@/utils/supabase/server'
+import {
+  createDockerCompletionEnvFile,
+  deleteDockerEnvFile,
+} from '@/lib/docker-run-env'
 
 import { revalidatePath } from 'next/cache'
 
 const execAsync = promisify(exec)
+const execFileAsync = promisify(execFile)
 
 export async function resetProgress(postId: string, userId: string) {
   if (!postId || !userId) return { success: false }
@@ -54,6 +59,7 @@ export async function isContainerReady(port: number): Promise<boolean> {
 export async function deployContainer(formData: FormData) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
+  const { data: { session } } = await supabase.auth.getSession()
   
   const image = formData.get('image') as string
   const postId = formData.get('postId') as string
@@ -91,10 +97,24 @@ export async function deployContainer(formData: FormData) {
       }
     }
 
-    // 2. Start the container (no volume mount needed as we use commit)
-    const runCmd = `docker run -d --shm-size="1gb" -p 0:${internalPort} ${imageToRun}`
-    const { stdout: runStdout } = await execAsync(runCmd)
-    containerId = runStdout.trim()
+    // 2. Start the container (no volume mount needed as we use commit).
+    // Pass Supabase access token + post id for in-container calls to POST /api/completion.
+    let envFile: string | null = null
+    try {
+      envFile = await createDockerCompletionEnvFile({
+        accessToken: session?.access_token,
+        postId: postId || null,
+      })
+      const runArgs = ['run', '-d', '--shm-size=1gb', '-p', `0:${internalPort}`]
+      if (envFile) runArgs.push('--env-file', envFile)
+      runArgs.push(imageToRun)
+      const { stdout: runStdout } = await execFileAsync('docker', runArgs, {
+        maxBuffer: 10 * 1024 * 1024,
+      })
+      containerId = runStdout.trim()
+    } finally {
+      await deleteDockerEnvFile(envFile)
+    }
 
     // 3. Fix permissions for common workdirs (best effort)
     try {
