@@ -190,7 +190,7 @@ export default async function Home() {
 
       <TestimonialsSection />
       
-      <FinalCTA />
+      <FinalCTA user={user} />
     </div>
   )
 }

@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { addComment } from '@/app/challenge/actions'
 import { submitRating } from '@/app/actions/preview'
 import { cn } from '@/lib/utils'
+import { Star, MessageSquare, Send, CheckCircle2, AlertCircle } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
 export function CompletionFeedbackForm({
   postId,
@@ -15,6 +17,7 @@ export function CompletionFeedbackForm({
 }) {
   const router = useRouter()
   const [stars, setStars] = useState<number>(initialRating ?? 0)
+  const [hoverStars, setHoverStars] = useState<number>(0)
   const [body, setBody] = useState('')
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -57,62 +60,92 @@ export function CompletionFeedbackForm({
   }
 
   return (
-    <form onSubmit={onSubmit} className="mt-8 space-y-6 rounded-2xl border border-border bg-card p-6 shadow-sm">
-      <div>
-        <h2 className="text-lg font-semibold text-foreground">Rate & discuss</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Your rating and comment are shared with the community. You can update your star rating anytime.
+    <form onSubmit={onSubmit} className="space-y-8 rounded-3xl border border-border bg-card p-8 shadow-sm">
+      <div className="space-y-2">
+        <h2 className="flex items-center gap-2 text-xl font-bold text-foreground">
+          <MessageSquare className="size-5 text-primary" />
+          Rate & Discuss
+        </h2>
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          Your insights help the community. Share your technical perspective on this lab.
         </p>
       </div>
 
-      <div>
-        <span className="text-sm font-medium text-foreground">Your rating</span>
-        <div className="mt-2 flex gap-1">
+      <div className="space-y-4">
+        <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/60">Your Rating</label>
+        <div className="flex gap-2">
           {[1, 2, 3, 4, 5].map((n) => (
             <button
               key={n}
               type="button"
+              onMouseEnter={() => setHoverStars(n)}
+              onMouseLeave={() => setHoverStars(0)}
               onClick={() => setStars(n)}
               className={cn(
-                'flex size-10 items-center justify-center rounded-lg transition-colors',
-                stars >= n
-                  ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
-                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                'group relative flex size-12 items-center justify-center rounded-xl border transition-all duration-300',
+                (hoverStars || stars) >= n
+                  ? 'border-amber-500/50 bg-amber-500/10 text-amber-500 shadow-[0_0_1rem_-0.25rem_rgba(245,158,11,0.3)]'
+                  : 'border-border bg-muted/30 text-muted-foreground hover:border-border-hover'
               )}
               aria-label={`${n} star${n === 1 ? '' : 's'}`}
             >
-              <svg className="size-6" fill="currentColor" viewBox="0 0 20 20" aria-hidden>
-                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-              </svg>
+              <Star 
+                className={cn(
+                  "size-6 transition-transform duration-300 group-hover:scale-110",
+                  (hoverStars || stars) >= n ? "fill-amber-500" : "fill-transparent"
+                )} 
+              />
             </button>
           ))}
         </div>
       </div>
 
-      <div>
-        <label htmlFor="completion-comment" className="text-sm font-medium text-foreground">
-          Comment
+      <div className="space-y-4">
+        <label htmlFor="completion-comment" className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/60">
+          Technical Review
         </label>
         <textarea
           id="completion-comment"
           value={body}
           onChange={(e) => setBody(e.target.value)}
           rows={5}
-          placeholder="What did you think of this challenge?"
-          className="mt-2 w-full rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          placeholder="What did you think of the challenge architecture, tooling, and difficulty?"
+          className="w-full rounded-2xl border border-input bg-muted/10 p-5 text-sm text-foreground font-medium placeholder:text-muted-foreground/40 outline-none focus:ring-2 focus:ring-primary/20 focus:bg-card transition-all resize-none leading-relaxed"
         />
       </div>
 
-      {error && <p className="text-sm text-destructive">{error}</p>}
-      {done && <p className="text-sm text-emerald-600 dark:text-emerald-400">Saved. Thanks for the feedback.</p>}
+      {error && (
+        <div className="flex items-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/5 px-4 py-3 text-sm text-rose-500 animate-in fade-in zoom-in-95">
+          <AlertCircle className="size-4 shrink-0" />
+          {error}
+        </div>
+      )}
+      
+      {done && (
+        <div className="flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-4 py-3 text-sm text-emerald-500 animate-in fade-in zoom-in-95">
+          <CheckCircle2 className="size-4 shrink-0" />
+          Review captured successfully. Thanks for contributing.
+        </div>
+      )}
 
-      <button
+      <Button
         type="submit"
-        disabled={pending}
-        className="rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+        disabled={pending || done}
+        size="lg"
+        className="w-full h-12 rounded-xl font-bold shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] active:scale-[0.98] gap-2"
       >
-        {pending ? 'Saving…' : 'Submit feedback'}
-      </button>
+        {pending ? (
+          <>
+            <div className="size-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+            Transmitting...
+          </>
+        ) : (
+          <>
+            <Send className="size-4" />
+            Submit Feedback
+          </>
+        )}
+      </Button>
     </form>
   )
 }
