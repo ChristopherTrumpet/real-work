@@ -222,9 +222,9 @@ export default function LibraryClient({ initialUserId }: { initialUserId?: strin
       </div>
 
       {loading ? (
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-4">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-48 animate-pulse rounded-2xl bg-muted/50 w-full" />
+            <div key={i} className="h-36 animate-pulse rounded-2xl bg-muted/50 w-full" />
           ))}
         </div>
       ) : (
@@ -269,7 +269,7 @@ export default function LibraryClient({ initialUserId }: { initialUserId?: strin
               {searching && (
                 <h2 className="mb-4 text-xs font-bold uppercase tracking-widest text-muted-foreground">Challenges</h2>
               )}
-              <div className="flex flex-col gap-6">
+              <div className="flex flex-col gap-4">
                 {challenges.map((challenge, i) => (
                   <div
                     key={challenge.id}
@@ -280,6 +280,7 @@ export default function LibraryClient({ initialUserId }: { initialUserId?: strin
                       container={challenge}
                       userId={initialUserId}
                       hasSession={false}
+                      size="sm"
                     />
                   </div>
                 ))}

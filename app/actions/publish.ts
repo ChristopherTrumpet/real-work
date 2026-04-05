@@ -44,15 +44,7 @@ async function runPublishProcess(buildId: string, postId: string, containerId: s
     )
 
     const localSnapshotTag = `local-capture-${postId}`
-    // Explicitly preserve ENTRYPOINT, USER, and other metadata during commit
-    const commitCmd = `docker commit \\
-      --change='ENTRYPOINT ["/entrypoint.sh"]' \\
-      --change='USER developer' \\
-      --change='EXPOSE 3000' \\
-      --change='WORKDIR /workspace' \\
-      ${containerId} ${localSnapshotTag}`
-    
-    await execAsync(commitCmd, {
+    await execAsync(`docker commit ${containerId} ${localSnapshotTag}`, {
       maxBuffer: 50 * 1024 * 1024,
     })
     appendLog(buildId, `Workspace snapshot captured successfully.`)

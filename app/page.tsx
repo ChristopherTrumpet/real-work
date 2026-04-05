@@ -1,36 +1,54 @@
 import Link from 'next/link'
-import { createClient } from '@/utils/supabase/server'
+import { getServerSupabaseUser } from '@/utils/supabase/cached-session'
 import { deployContainer } from './actions/docker'
 import { ChallengeFeedCard, type ChallengeFeedItem } from '@/components/ChallengeFeedCard'
 import { HeroSection } from '@/components/home/HeroSection'
 import fs from 'fs'
 import path from 'path'
 
+type HomeMetricsRow = {
+  total_challenges: number
+  total_completions: number
+  contributor_count: number
+}
+
 export default async function Home() {
-  const supabase = await createClient()
+  const { supabase, user } = await getServerSupabaseUser()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  // Single aggregated query (see supabase_setup.sql: home_feed_metrics). Avoids loading every post row.
+  const { data: metricsRow, error: metricsError } = await supabase.rpc('home_feed_metrics').maybeSingle()
 
-  // Fetch all for metrics
-  const { data: allPosts } = await supabase
-    .from('posts')
-    .select('id, user_id, number_of_completions')
-    .eq('is_draft', false)
+  let totalChallenges = 0
+  let totalCompletions = 0
+  let contributorCount = 0
 
-  const totalChallenges = allPosts?.length ?? 0
-  const totalCompletions = allPosts?.reduce((acc, c) => acc + (c.number_of_completions ?? 0), 0) ?? 0
-  const contributorCount = new Set(allPosts?.map((c) => c.user_id as string).filter(Boolean)).size
+  if (!metricsError && metricsRow) {
+    const m = metricsRow as HomeMetricsRow
+    totalChallenges = Number(m.total_challenges) || 0
+    totalCompletions = Number(m.total_completions) || 0
+    contributorCount = Number(m.contributor_count) || 0
+  } else {
+    if (process.env.NODE_ENV === 'development' && metricsError) {
+      console.warn(
+        '[home] home_feed_metrics RPC failed — run the SQL in supabase_setup.sql (home_feed_metrics). Falling back to count-only.',
+        metricsError.message
+      )
+    }
+    const { count } = await supabase
+      .from('posts')
+      .select('*', { count: 'exact', head: true })
+      .eq('is_draft', false)
+    totalChallenges = count ?? 0
+  }
 
-  // Fetch top 9 by rating
+  // Fetch top 4 by rating (2×2 grid on sm+)
   const { data: topChallenges, error: fetchError } = await supabase
     .from('posts')
     .select('*, profiles!user_id(username, full_name, avatar_url)')
     .eq('is_draft', false)
     .order('average_rating', { ascending: false, nullsFirst: false })
     .order('ratings_count', { ascending: false })
-    .limit(9)
+    .limit(4)
 
   const list = (topChallenges ?? []) as ChallengeFeedItem[]
 
@@ -136,7 +154,7 @@ export default async function Home() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="mx-auto grid max-w-4xl grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-5">
             {list.length > 0 ? (
               list.map((container, i) => (
                 <div key={container.id} className="animate-fade-up" style={{ '--stagger': i * 0.1 } as React.CSSProperties}>
@@ -144,7 +162,7 @@ export default async function Home() {
                     container={container}
                     userId={user?.id}
                     hasSession={activeSessions.has(container.id)}
-                    size="md"
+                    size="sm"
                   />
                 </div>
               ))

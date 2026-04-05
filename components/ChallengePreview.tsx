@@ -3,24 +3,17 @@
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { Rocket, ExternalLink, GitBranch, CheckCircle2, AlertCircle, Info, Code, Play, Trash2 } from 'lucide-react'
+import { Rocket, ExternalLink, CheckCircle2, Info, Code, Trash2, Star } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { BenchmarkResult } from '@/lib/evaluator'
-import BenchmarkResults from '@/components/BenchmarkResults'
-import { evaluateChallengeAction } from '@/app/actions/benchmark'
+import { submitCompletion } from '@/app/actions/preview'
 import { deleteChallenge } from '@/app/actions/delete-challenge'
 
 export default function ChallengePreview({ post, currentUserId }: { post: any, currentUserId?: string }) {
   const router = useRouter()
   const [status, setStatus] = useState<'deploying' | 'ready' | 'error'>('deploying')
   const [port, setPort] = useState<string | null>(null)
-  const [containerId, setContainerId] = useState<string | null>(null)
   
-  // Benchmarking
-  const [isEvaluating, setIsEvaluating] = useState(false)
-  const [benchmarkResult, setBenchmarkResult] = useState<BenchmarkResult | null>(null)
-  const [userCode, setUserCode] = useState('')
-  const [showEval, setShowEval] = useState(false)
+  const [isCompleting, setIsCompleting] = useState(false)
 
   // Deletion
   const [isDeleting, setIsDeleting] = useState(false)
@@ -29,11 +22,9 @@ export default function ChallengePreview({ post, currentUserId }: { post: any, c
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
     const p = urlParams.get('port')
-    const c = urlParams.get('containerId')
-    
-    if (p && c) {
+
+    if (p) {
       setPort(p)
-      setContainerId(c)
       setStatus('ready')
     } else {
       const timer = setTimeout(() => setStatus('ready'), 3000)
@@ -64,32 +55,23 @@ export default function ChallengePreview({ post, currentUserId }: { post: any, c
     }
   }
 
-  const handleRunEvaluation = async () => {
-    if (!post || !containerId || !userCode) return
-    setIsEvaluating(true)
+  const handleCompleteAndRate = async () => {
+    if (!post) return
+    setIsCompleting(true)
     try {
-      const result = await evaluateChallengeAction({
-        containerId,
-        language: post.benchmark_language || 'python',
-        userCode,
-        goldCode: post.benchmark_gold_code,
-        testCases: post.benchmark_test_cases,
-        timeoutMs: post.benchmark_timeout_ms || 10000
-      })
-      setBenchmarkResult(result)
-    } catch (e: any) {
-      alert('Evaluation failed: ' + e.message)
+      const result = await submitCompletion(post.id)
+      if (result && 'error' in result && result.error) {
+        alert(result.error)
+        return
+      }
+      router.push(`/challenge/${post.id}/complete`)
     } finally {
-      setIsEvaluating(false)
+      setIsCompleting(false)
     }
   }
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      {benchmarkResult && (
-        <BenchmarkResults result={benchmarkResult} onClose={() => setBenchmarkResult(null)} />
-      )}
-
       {/* Hero Header */}
       <div className="border-b border-border bg-muted/10">
         <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
@@ -203,51 +185,41 @@ export default function ChallengePreview({ post, currentUserId }: { post: any, c
             </div>
           </section>
 
-          {/* Evaluation Section */}
-          <section className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold tracking-tight">Test Your Solution</h2>
-              <Button variant="ghost" size="sm" onClick={() => setShowEval(!showEval)}>
-                {showEval ? 'Hide Editor' : 'Show Editor'}
-              </Button>
-            </div>
-
-            {showEval && (
-              <div className="space-y-4 animate-in fade-in slide-in-from-top-4 duration-300">
-                <p className="text-sm text-muted-foreground">Paste your implementation below to benchmark it against the gold standard algorithm in the live environment.</p>
-                <div className="border border-border rounded-2xl overflow-hidden bg-card shadow-sm">
-                  <div className="p-3 bg-muted/30 border-b border-border flex items-center justify-between">
-                    <div className="flex gap-2">
-                      <div className="w-3 h-3 rounded-full bg-red-500/20 border border-red-500/40" />
-                      <div className="w-3 h-3 rounded-full bg-yellow-500/20 border border-yellow-500/40" />
-                      <div className="w-3 h-3 rounded-full bg-green-500/20 border border-green-500/40" />
-                    </div>
-                    <span className="text-[10px] font-mono text-muted-foreground uppercase">{post.benchmark_language}.solution</span>
-                  </div>
-                  <textarea 
-                    value={userCode}
-                    onChange={(e) => setUserCode(e.target.value)}
-                    placeholder="// Your code here..."
-                    className="w-full h-80 p-6 bg-transparent font-mono text-sm outline-none resize-none"
-                  />
-                </div>
-                <div className="flex justify-end">
-                  <Button onClick={handleRunEvaluation} disabled={isEvaluating || !userCode} className="h-12 px-8 rounded-xl font-bold shadow-lg shadow-primary/20">
-                    {isEvaluating ? (
-                      <>
-                        <div className="mr-2 w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
-                        Running Evaluation...
-                      </>
-                    ) : (
-                      <>
-                        <Play className="mr-2 size-4" />
-                        Run Performance Benchmark
-                      </>
-                    )}
-                  </Button>
-                </div>
+          {/* Completion → same flow as workspace: record solve + rate / comment on dedicated page */}
+          <section className="space-y-4 rounded-2xl border border-emerald-500/25 bg-emerald-500/5 p-6 shadow-sm">
+            <div className="flex items-start gap-3">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                <Star className="size-5" />
               </div>
-            )}
+              <div className="min-w-0 space-y-2">
+                <h2 className="text-xl font-bold tracking-tight">Finish &amp; rate this challenge</h2>
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  When you&apos;re done working in the IDE, mark the challenge complete. You&apos;ll go to the completion
+                  page to submit your star rating and optional feedback—same path as the main workspace flow.
+                </p>
+                <Button
+                  type="button"
+                  onClick={handleCompleteAndRate}
+                  disabled={isCompleting || status !== 'ready'}
+                  className="mt-2 h-12 rounded-xl bg-emerald-600 px-8 font-bold text-white shadow-lg shadow-emerald-500/20 hover:bg-emerald-700 disabled:opacity-50"
+                >
+                  {isCompleting ? (
+                    <>
+                      <div className="mr-2 size-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                      Saving…
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="mr-2 size-4" />
+                      Mark complete &amp; open rating page
+                    </>
+                  )}
+                </Button>
+                {status !== 'ready' && (
+                  <p className="text-xs text-muted-foreground">Available once the environment shows as ready.</p>
+                )}
+              </div>
+            </div>
           </section>
         </div>
 

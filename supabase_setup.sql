@@ -416,3 +416,25 @@ grant execute on function public.delete_user() to authenticated;
 --   4. Set profiles.avatar_url to the public URL: getPublicUrl(`${userId}/avatar.jpg`) or a signed URL if bucket is private.
 --   Alternatively keep storing any HTTPS URL in profiles.avatar_url (Gravatar, GitHub, etc.) without Storage.
 -- -----------------------------------------------------------------------------
+
+-- Home page: aggregate metrics in one query (do not SELECT every published post from the app).
+create or replace function public.home_feed_metrics()
+returns table (
+  total_challenges bigint,
+  total_completions bigint,
+  contributor_count bigint
+)
+language sql
+stable
+security invoker
+set search_path = public
+as $$
+  select
+    count(*)::bigint as total_challenges,
+    coalesce(sum(p.number_of_completions), 0)::bigint as total_completions,
+    count(distinct p.user_id)::bigint as contributor_count
+  from public.posts p
+  where p.is_draft = false;
+$$;
+
+grant execute on function public.home_feed_metrics() to anon, authenticated;
