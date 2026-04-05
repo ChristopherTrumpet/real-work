@@ -144,39 +144,6 @@ export default function DraftWorkspace({ post }: { post: DraftPost }) {
         {/* Left Sidebar: API & Instructions */}
         <aside className="w-full md:w-[380px] shrink-0 border-r border-border flex-col bg-card/30 overflow-y-auto custom-scrollbar hidden md:flex">
           <div className="p-6 space-y-8">
-            {/* API Key Section */}
-            <section className="space-y-4">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Key className="size-4" />
-                <h2 className="text-xs font-bold uppercase tracking-widest">
-                  Workspace API Key
-                </h2>
-              </div>
-              <div className="p-4 bg-muted/40 border border-border rounded-xl space-y-3 shadow-inner">
-                <div className="flex items-center justify-between gap-2">
-                  <code className="text-[10px] font-mono text-primary break-all leading-relaxed">
-                    {post.api_key}
-                  </code>
-                  <button
-                    onClick={handleCopyKey}
-                    className="shrink-0 p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground hover:text-foreground"
-                  >
-                    {copied ? (
-                      <Check className="size-4 text-primary" />
-                    ) : (
-                      <Copy className="size-4" />
-                    )}
-                  </button>
-                </div>
-              </div>
-              <p className="text-[11px] text-muted-foreground leading-relaxed italic">
-                Use this key to authenticate benchmark requests from within your
-                containerized algorithms.
-              </p>
-            </section>
-
-            <div className="h-px bg-border" />
-
             {/* Usage Instructions */}
             <section className="space-y-4">
               <div className="flex items-center gap-2 text-muted-foreground">

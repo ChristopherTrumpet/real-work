@@ -103,10 +103,9 @@ async function runDraftBuildProcess(
   try {
     appendLog(buildId, `Preparing universal workspace environment...`, true);
 
-    // Escape backticks and dollar signs for the shell script
-    const escapedSetupScript = setupScript
-      ? setupScript.replace(/`/g, "\\`").replace(/\$/g, "\\$")
-      : "";
+    // 1. Write the setup script to the temp directory
+    const setupScriptPath = path.join(tmpDir, "setup.sh");
+    await fs.writeFile(setupScriptPath, setupScript || "#!/bin/bash\nexit 0");
 
     // Standard high-performance Dockerfile for ALL challenges
     // No more templates - just a solid base with everything a dev needs
@@ -158,20 +157,9 @@ RUN mkdir -p /workspace /dockerstartup && \\
 WORKDIR /workspace
 ${repoUrl ? `RUN git clone ${repoUrl} . && chown -R developer:developer /workspace` : 'RUN echo "Starting with empty workspace" > README.md && chown developer:developer README.md'}
 
-# Create setup script if provided
-${
-  setupScript
-    ? `RUN echo "${escapedSetupScript}" > /dockerstartup/setup.sh && chmod +x /dockerstartup/setup.sh && chown developer:developer /dockerstartup/setup.sh`
-    : "RUN touch /dockerstartup/setup.sh"
-}
-
-# Create startup script
-RUN echo '#!/bin/bash' > /dockerstartup/custom_startup.sh && \\
-    echo 'export DISPLAY=:0' >> /dockerstartup/custom_startup.sh && \\
-    echo '[ -f /dockerstartup/setup.sh ] && /dockerstartup/setup.sh' >> /dockerstartup/custom_startup.sh && \\
-    echo 'code /workspace --no-sandbox --disable-gpu &' >> /dockerstartup/custom_startup.sh && \\
-    chmod +x /dockerstartup/custom_startup.sh && \\
-    chown developer:developer /dockerstartup/custom_startup.sh
+# Copy and setup the initialization script
+COPY --chown=developer:developer setup.sh /dockerstartup/setup.sh
+RUN chmod +x /dockerstartup/setup.sh
 
 # Create Entrypoint
 RUN echo '#!/bin/bash' > /entrypoint.sh && \\
@@ -184,6 +172,14 @@ RUN echo '#!/bin/bash' > /entrypoint.sh && \\
     echo 'websockify --web /usr/share/novnc/ 3000 localhost:5900' >> /entrypoint.sh && \\
     chmod +x /entrypoint.sh && \\
     chown developer:developer /entrypoint.sh
+
+# Create custom startup that executes the user's setup script
+RUN echo '#!/bin/bash' > /dockerstartup/custom_startup.sh && \\
+    echo 'export DISPLAY=:0' >> /dockerstartup/custom_startup.sh && \\
+    echo '/dockerstartup/setup.sh' >> /dockerstartup/custom_startup.sh && \\
+    echo 'code /workspace --no-sandbox --disable-gpu &' >> /dockerstartup/custom_startup.sh && \\
+    chmod +x /dockerstartup/custom_startup.sh && \\
+    chown developer:developer /dockerstartup/custom_startup.sh
 
 USER developer
 ENV USER=developer
