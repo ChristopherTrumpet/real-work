@@ -126,13 +126,13 @@ export default function NewChallengePage() {
                       <Layout className="size-4 text-primary/60" />
                       Challenge Title
                     </label>
-                    <input 
+                    <input
                       required
-                      type="text" 
+                      type="text"
                       value={formData.title}
                       onChange={e => setFormData({...formData, title: e.target.value})}
                       placeholder="e.g. Debugging a Node.js Memory Leak"
-                      className="w-full h-14 border border-input rounded-lg bg-muted/10 px-5 text-base font-medium outline-none focus:ring-2 focus:ring-primary/20 focus:bg-card transition-all" 
+                      className="w-full h-12 border border-input rounded-lg bg-muted/10 px-5 text-base font-medium outline-none focus:ring-2 focus:ring-primary/20 focus:bg-card transition-all"
                     />
                   </div>
 
@@ -143,10 +143,10 @@ export default function NewChallengePage() {
                         Difficulty Level
                       </label>
                       <div className="relative">
-                        <select 
+                        <select
                           value={formData.difficulty}
                           onChange={e => setFormData({...formData, difficulty: e.target.value})}
-                          className="w-full h-14 border border-input rounded-lg bg-muted/10 px-5 text-base font-medium outline-none focus:ring-2 focus:ring-primary/20 focus:bg-card transition-all appearance-none"
+                          className="w-full h-12 border border-input rounded-lg bg-muted/10 px-5 text-base font-medium outline-none focus:ring-2 focus:ring-primary/20 focus:bg-card transition-all appearance-none"
                         >
                           <option value="easy">🟢 Easy</option>
                           <option value="medium">🟡 Medium</option>
@@ -160,12 +160,12 @@ export default function NewChallengePage() {
                         <Tag className="size-4 text-primary/60" />
                         Categories / Tags
                       </label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         value={formData.tags}
                         onChange={e => setFormData({...formData, tags: e.target.value})}
                         placeholder="linux, node, performance"
-                        className="w-full h-14 border border-input rounded-lg bg-muted/10 px-5 text-base font-medium outline-none focus:ring-2 focus:ring-primary/20 focus:bg-card transition-all" 
+                        className="w-full h-12 border border-input rounded-lg bg-muted/10 px-5 text-base font-medium outline-none focus:ring-2 focus:ring-primary/20 focus:bg-card transition-all"
                       />
                     </div>
                   </div>
@@ -190,11 +190,11 @@ export default function NewChallengePage() {
                       Thumbnail URL (Optional)
                     </label>
                     <input 
-                      type="url" 
+                      type="url"
                       value={formData.thumbnailUrl}
                       onChange={e => setFormData({...formData, thumbnailUrl: e.target.value})}
                       placeholder="https://images.unsplash.com/photo..."
-                      className="w-full h-14 border border-input rounded-lg bg-muted/10 px-5 text-base font-medium outline-none focus:ring-2 focus:ring-primary/20 focus:bg-card transition-all" 
+                      className="w-full h-12 border border-input rounded-lg bg-muted/10 px-5 text-base font-medium outline-none focus:ring-2 focus:ring-primary/20 focus:bg-card transition-all"
                     />
                   </div>
                 </div>
@@ -366,7 +366,7 @@ export default function NewChallengePage() {
 
                   <div className="flex flex-wrap gap-2 pt-2">
                     {formData.tags ? formData.tags.split(',').map((tag, i) => (
-                      <span key={i} className="text-[9px] bg-primary/10 px-2.5 py-1 rounded font-black text-primary border border-primary/20 uppercase tracking-tighter shadow-sm">
+                      <span key={i} className="text-[10px] bg-primary/10 px-2.5 py-1 rounded font-black text-primary border border-primary/20 uppercase tracking-tight shadow-sm">
                         #{tag.trim()}
                       </span>
                     )) : (
@@ -385,12 +385,12 @@ export default function NewChallengePage() {
                       <>
                         <div className="absolute inset-0 bg-primary-foreground/10 animate-pulse" />
                         <div className="relative flex items-center justify-center gap-3">
-                          <div className="size-5 border-3 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+                          <div className="size-5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
                           <span>Deploying...</span>
                         </div>
                       </>
                     ) : (
-                      <div className="relative flex items-center justify-center gap-3 text-foreground">
+                      <div className="relative flex items-center justify-center gap-3 text-primary-foreground">
                         <Rocket className="size-6 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
                         <span>Deploy Workspace</span>
                       </div>
@@ -451,7 +451,7 @@ export default function NewChallengePage() {
                   placeholder="Search your repositories by name..."
                   value={repoSearch}
                   onChange={(e) => setRepoSearch(e.target.value)}
-                  className="w-full h-16 border-2 border-input rounded-lg bg-muted/10 pl-16 pr-6 text-lg font-bold outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary focus:bg-background transition-all shadow-inner placeholder:font-medium placeholder:text-muted-foreground/50 text-foreground"
+                  className="w-full h-14 border border-input rounded-lg bg-muted/10 pl-16 pr-6 text-lg font-bold outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-background transition-all shadow-inner placeholder:font-medium placeholder:text-muted-foreground/50 text-foreground"
                 />
               </div>
             </div>

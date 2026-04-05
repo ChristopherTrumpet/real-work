@@ -12,9 +12,9 @@ export default function WorkspacePage() {
   
   if (!port) {
     return (
-      <div className="flex h-screen items-center justify-center bg-zinc-950 text-white font-mono">
+      <div className="flex h-screen items-center justify-center bg-background text-foreground">
         <div className="text-center space-y-4">
-          <p className="text-zinc-500">ERROR: NO_PORT_ASSIGNED</p>
+          <p className="text-muted-foreground text-sm">No port assigned to this session.</p>
           <Button onClick={() => router.push('/')} variant="outline" className="rounded-full">
             <ArrowLeft className="mr-2 size-4" />
             Return to Dashboard
@@ -25,23 +25,23 @@ export default function WorkspacePage() {
   }
 
   return (
-    <div className="flex flex-col w-full h-[calc(100vh-3.5rem)] bg-zinc-950 overflow-hidden text-white">
+    <div className="flex flex-col w-full h-[calc(100vh-3.5rem)] bg-background overflow-hidden text-foreground">
       {/* Solver Header */}
-      <header className="h-14 shrink-0 px-6 border-b border-zinc-800 bg-zinc-900 flex justify-between items-center z-50">
+      <header className="h-14 shrink-0 px-6 border-b border-border bg-card flex justify-between items-center z-50">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <div className="p-1 bg-emerald-500/10 rounded text-emerald-500">
+            <div className="p-1 bg-primary/10 rounded text-primary">
               <Shield className="size-4" />
             </div>
-            <h1 className="font-bold text-xs uppercase tracking-widest text-zinc-400">Sandbox Environment</h1>
+            <h1 className="font-bold text-xs uppercase tracking-widest text-muted-foreground">Sandbox Environment</h1>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
-          <Button 
+          <Button
             onClick={() => router.push('/')}
             variant="ghost"
-            className="text-zinc-500 hover:text-white text-xs font-bold"
+            className="text-muted-foreground hover:text-foreground text-xs font-bold"
           >
             Leave Session
           </Button>
