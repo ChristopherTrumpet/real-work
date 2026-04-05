@@ -121,14 +121,24 @@ export default async function Home() {
 
           <div className="flex flex-col gap-5">
             {list.length > 0 ? (
-              list.map((container) => (
-                <ChallengeFeedCard
-                  key={container.id}
-                  container={container}
-                  userId={user?.id}
-                  hasSession={activeSessions.has(container.id)}
-                />
-              ))
+              <>
+                {list.map((container) => (
+                  <ChallengeFeedCard
+                    key={container.id}
+                    container={container}
+                    userId={user?.id}
+                    hasSession={activeSessions.has(container.id)}
+                  />
+                ))}
+                <div className="mt-8 flex justify-center">
+                  <Link
+                    href="/library"
+                    className="inline-flex h-12 items-center justify-center rounded-full border border-border bg-card px-8 text-base font-semibold text-foreground shadow-sm transition-colors hover:bg-muted"
+                  >
+                    View all challenges
+                  </Link>
+                </div>
+              </>
             ) : (
               <div className="rounded-2xl border border-dashed border-border bg-muted/20 px-8 py-20 text-center">
                 <p className="text-base font-medium text-foreground">No highly-rated challenges yet</p>
