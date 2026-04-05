@@ -35,12 +35,28 @@ export async function fetchGitHubRepos(usernameOrUrl?: string) {
       headers: providerToken ? { Authorization: `Bearer ${providerToken}` } : {}
     })
     if (res.ok) repos = await res.json()
-  } else if (providerToken) {
-    // Fetch authenticated user's repos
-    const res = await fetch('https://api.github.com/user/repos?sort=updated&per_page=100', {
-      headers: { Authorization: `Bearer ${providerToken}` }
-    })
-    if (res.ok) repos = await res.json()
+  } else {
+    // Attempt to fetch using provider token first (includes private repos)
+    if (providerToken) {
+      const res = await fetch('https://api.github.com/user/repos?sort=updated&per_page=100', {
+        headers: { Authorization: `Bearer ${providerToken}` }
+      })
+      if (res.ok) repos = await res.json()
+    }
+    
+    // Fallback: use GitHub username from metadata if token is missing/expired
+    if (repos.length === 0) {
+      const ghUsername = user.user_metadata?.user_name || user.user_metadata?.preferred_username
+      if (ghUsername) {
+        console.log(`Falling back to public repos for user: ${ghUsername}`)
+        const res = await fetch(`https://api.github.com/users/${ghUsername}/repos?sort=updated&per_page=100`)
+        if (res.ok) repos = await res.json()
+      }
+    }
+  }
+
+  if (repos.length === 0) {
+    console.warn('No repositories found. Provider token might be missing or expired.')
   }
 
   return repos.map((r: any) => ({
