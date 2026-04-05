@@ -2,7 +2,6 @@ import Link from 'next/link'
 import { createClient } from '@/utils/supabase/server'
 import { deployContainer } from './actions/docker'
 import { startStudioSession } from './actions/studio'
-import { syncCloudImages } from './actions/sync'
 import { ChallengeFeedCard, type ChallengeFeedItem } from '@/components/ChallengeFeedCard'
 import { HeroSection } from '@/components/home/HeroSection'
 import fs from 'fs'
@@ -21,12 +20,6 @@ export default async function Home() {
     .order('created_at', { ascending: false })
 
   const list = (containers ?? []) as ChallengeFeedItem[]
-
-  // Trigger background sync for cloud images
-  if (list.length > 0) {
-    const imageUrls = list.map(c => c.content_url).filter(Boolean) as string[]
-    syncCloudImages(imageUrls)
-  }
 
   const activeSessions = new Set<string>()
   if (user && list.length) {
