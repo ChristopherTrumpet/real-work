@@ -1,10 +1,42 @@
 'use client'
 
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
 
 export function FinalCTA() {
+  const [text, setText] = useState('Break')
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [loopNum, setWordIndex] = useState(0)
+  const [typingSpeed, setTypingSpeed] = useState(150)
+
+  const words = ['Break', 'Fix']
+
+  useEffect(() => {
+    const handleTyping = () => {
+      const i = loopNum % words.length
+      const fullWord = words[i]
+
+      setText(
+        isDeleting
+          ? fullWord.substring(0, text.length - 1)
+          : fullWord.substring(0, text.length + 1)
+      )
+
+      setTypingSpeed(isDeleting ? 80 : 150)
+
+      if (!isDeleting && text === fullWord) {
+        setTimeout(() => setIsDeleting(true), 2000)
+      } else if (isDeleting && text === '') {
+        setIsDeleting(false)
+        setWordIndex(loopNum + 1)
+      }
+    }
+
+    const timer = setTimeout(handleTyping, typingSpeed)
+    return () => clearTimeout(timer)
+  }, [text, isDeleting, loopNum, typingSpeed, words])
+
   return (
     <section className="relative overflow-hidden py-24 md:py-40">
       {/* Cinematic Background */}
@@ -28,8 +60,11 @@ export function FinalCTA() {
           <span className="text-[10px] font-bold uppercase tracking-widest text-primary">System Online</span>
         </div>
 
-        <h2 className="text-4xl font-bold tracking-tight text-white sm:text-6xl mb-8">
-          Ready to <span className="text-primary italic font-serif">Break</span> something?
+        <h2 className="text-4xl font-bold tracking-tight text-white sm:text-6xl mb-8 min-h-[1.2em]">
+          Ready to <span className="relative">
+            <span className="text-primary italic font-serif">{text}</span>
+            <span className="ml-1 inline-block w-1 h-[0.8em] bg-primary/50 animate-pulse" />
+          </span> something?
         </h2>
         
         <p className="mx-auto max-w-xl text-lg text-zinc-400 mb-12 leading-relaxed">
