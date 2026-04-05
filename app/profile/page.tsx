@@ -106,13 +106,13 @@ export default async function ProfilePage() {
 
               <button
                 type="submit"
-                className="mt-2 h-11 w-full rounded-lg bg-primary text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+                className="h-11 w-full rounded-lg bg-primary text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
               >
                 Save changes
               </button>
             </form>
 
-            <div className="mt-10 flex flex-col gap-3 border-t border-border pt-8 sm:flex-row sm:gap-4">
+            <div className="mt-8 flex flex-col gap-3 border-t border-border pt-6 sm:flex-row sm:gap-4">
               <form action="/auth/signout" method="post" className="flex-1">
                 <button
                   type="submit"
