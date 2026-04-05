@@ -2,6 +2,9 @@ import Link from 'next/link'
 import { getServerSupabaseUser } from '@/utils/supabase/cached-session'
 import { ChallengeFeedCard, type ChallengeFeedItem } from '@/components/ChallengeFeedCard'
 import { HeroSection } from '@/components/home/HeroSection'
+import { WorkflowSection } from '@/components/home/WorkflowSection'
+import { TestimonialsSection } from '@/components/home/TestimonialsSection'
+import { FinalCTA } from '@/components/home/FinalCTA'
 import fs from 'fs'
 import path from 'path'
 
@@ -128,6 +131,8 @@ export default async function Home() {
         </div>
       </section>
 
+      <WorkflowSection />
+
       <main className="mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-16 md:py-20">
         <div id="library" className="scroll-mt-24">
           <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -182,6 +187,10 @@ export default async function Home() {
           </div>
         </div>
       </main>
+
+      <TestimonialsSection />
+      
+      <FinalCTA />
     </div>
   )
 }
