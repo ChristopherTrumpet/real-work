@@ -18,7 +18,9 @@ export async function buildChallengeContainer(config: any) {
 
   const { repoUrl, templateId, benchmarkLang, goldCode, details } = config
   const buildId = `build-${Date.now()}`
-  const imageName = `challenge-${user.id.substring(0,8).toLowerCase()}-${Date.now()}`
+  const registry = '150.136.116.136:5000'
+  const baseImageName = `challenge-${user.id.substring(0,8).toLowerCase()}-${Date.now()}`
+  const imageName = `${registry}/${baseImageName}`
   
   initBuild(buildId)
   
@@ -139,6 +141,19 @@ RUN chown -R abc:abc /workspace && chmod -R 777 /workspace
     })
 
     appendLog(buildId, `Image built successfully: ${imageName}`)
+
+    // 4.5 Push image to registry
+    appendLog(buildId, `Pushing image to cloud registry: ${imageName}...`, true)
+    await new Promise((resolve, reject) => {
+      const child = spawn('docker', ['push', imageName])
+      child.stdout.on('data', (data) => appendLog(buildId, `[push] ${data.toString().trim()}`))
+      child.stderr.on('data', (data) => appendLog(buildId, `[push-stderr] ${data.toString().trim()}`))
+      child.on('close', (code) => {
+        if (code === 0) resolve(true)
+        else reject(new Error(`Docker push failed with code ${code}`))
+      })
+    })
+    appendLog(buildId, `Successfully pushed to cloud registry.`)
 
     // 5. Spin up container
     appendLog(buildId, `Provisioning live workspace...`, true)

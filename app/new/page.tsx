@@ -8,6 +8,7 @@ import { fetchGitHubRepos, fetchRepoTree, fetchFileContent } from '@/app/actions
 import { parseFunctionHeaders } from '@/app/actions/ast'
 import { buildChallengeContainer } from '@/app/actions/builder'
 import { signInWithGitHub } from '@/app/actions/auth'
+import { useBuild } from '@/lib/build-context'
 import Editor from 'react-simple-code-editor'
 import { highlight, languages } from 'prismjs'
 import 'prismjs/components/prism-clike'
@@ -130,8 +131,6 @@ export default function NewChallengeWizard() {
   }
 
   const [isDeploying, setIsDeploying] = useState(false)
-  const [buildLogs, setBuildLogs] = useState<{timestamp: string, message: string, duration?: string, startedAt?: number}[]>([])
-  const [showLogs, setShowLogs] = useState(true)
   const [now, setNow] = useState(Date.now())
 
   useEffect(() => {
@@ -140,9 +139,10 @@ export default function NewChallengeWizard() {
     return () => clearInterval(interval)
   }, [isDeploying])
 
+  const { activeBuild, startTrackingBuild } = useBuild()
+
   const handleDeploy = async () => {
     setIsDeploying(true)
-    setBuildLogs([{ timestamp: new Date().toLocaleTimeString(), message: 'Initializing build process...', startedAt: Date.now() }])
     try {
       const result = await buildChallengeContainer({
         repoUrl: selectedRepo.clone_url,
@@ -151,9 +151,10 @@ export default function NewChallengeWizard() {
         goldCode,
         details
       })
-
+      
       if (result.success && result.buildId) {
-        pollBuildLogs(result.buildId)
+        startTrackingBuild(result.buildId)
+        router.push('/profile')
       } else {
         alert('Deployment failed to start')
         setIsDeploying(false)
@@ -163,41 +164,6 @@ export default function NewChallengeWizard() {
       setIsDeploying(false)
     }
   }
-  const formatDuration = (seconds: number) => {
-    if (seconds < 60) return `${seconds.toFixed(2)}s`
-    const mins = Math.floor(seconds / 60)
-    const secs = (seconds % 60).toFixed(1)
-    if (mins < 60) return `${mins}m ${secs}s`
-    const hrs = Math.floor(mins / 60)
-    const remainingMins = mins % 60
-    return `${hrs}h ${remainingMins}m`
-  }
-
-  const pollBuildLogs = async (buildId: string) => {
-    const interval = setInterval(async () => {
-      try {
-        const res = await fetch(`/api/build-logs?id=${buildId}`)
-        const data = await res.json()
-
-        if (data.logs) {
-          setBuildLogs(data.logs)
-        }
-
-        if (data.status === 'ready') {
-          clearInterval(interval)
-          router.push(`/preview/${data.result.postId}?port=${data.result.port}&containerId=${data.result.containerId}`)
-        } else if (data.status === 'error') {
-          clearInterval(interval)
-          setIsDeploying(false)
-          alert('Build failed. Check logs for details.')
-        }
-      } catch (e) {
-        console.error('Polling error:', e)
-      }
-    }, 1000)
-  }
-
-
   const getPrismLang = (lang: string) => {
     switch(lang) {
       case 'typescript': return languages.typescript
@@ -472,41 +438,6 @@ export default function NewChallengeWizard() {
                   {isDeploying ? 'Deploying Challenge...' : 'Deploy Challenge Environment'}
                   {!isDeploying && <Play className="ml-2 size-4" />}
                 </Button>
-
-                {isDeploying && (
-                  <div className="border border-border rounded-xl bg-black overflow-hidden shadow-2xl animate-in fade-in zoom-in-95">
-                    <button 
-                      onClick={() => setShowLogs(!showLogs)}
-                      className="w-full flex items-center justify-between p-3 bg-zinc-900 text-xs font-bold text-zinc-400 hover:text-white transition-colors"
-                    >
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                        BUILD LOGS
-                      </div>
-                      <ChevronRight className={`size-4 transition-transform ${showLogs ? 'rotate-90' : ''}`} />
-                    </button>
-                    {showLogs && (
-                      <div className="p-4 h-64 overflow-y-auto font-mono text-[10px] leading-relaxed text-green-500 bg-black/50 space-y-1 scrollbar-hide">
-                        {buildLogs.map((log, i) => {
-                          const isLast = i === buildLogs.length - 1
-                          const elapsed = log.startedAt ? (now - log.startedAt) / 1000 : 0
-                          
-                          // Use server-side duration if available, otherwise show real-time elapsed for the last step
-                          const displayDuration = log.duration || (isLast && isDeploying ? formatDuration(elapsed) : null)
-                          
-                          return (
-                            <div key={i} className="flex gap-3 border-l border-green-500/20 pl-2">
-                              <span className="text-zinc-600 shrink-0">{log.timestamp}</span>
-                              <span className="whitespace-pre-wrap break-all flex-1">{log.message}</span>
-                              {displayDuration && <span className="text-blue-400 shrink-0 font-bold">[{displayDuration}]</span>}
-                            </div>
-                          )
-                        })}
-                        <div className="animate-pulse">_</div>
-                      </div>
-                    )}
-                  </div>
-                )}
               </div>
             </div>
           </div>

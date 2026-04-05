@@ -39,11 +39,20 @@ export async function deployContainer(formData: FormData) {
     redirect('/error?message=' + encodeURIComponent('Docker image name/URL is required'))
   }
 
+  const registry = '150.136.116.136:5000'
+  const isCloudImage = image.startsWith(registry)
+
   let hostPort = ''
   let volumeMount = ''
   let workdir = '/config' // Default to /config for these types of images
   
   try {
+    // 0. Pull image if it's a cloud image
+    if (isCloudImage) {
+      console.log(`Pulling image from cloud registry: ${image}`)
+      await execAsync(`docker pull ${image}`)
+    }
+
     // 1. Determine the correct working directory for the image (for all users)
     try {
       const { stdout: inspectStdout } = await execAsync(`docker inspect --format="{{.Config.WorkingDir}}" ${image}`)
