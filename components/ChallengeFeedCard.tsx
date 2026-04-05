@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import { deployContainer } from '@/app/actions/docker'
 import { ResetProgressButton } from './ResetProgressButton'
+import { ArrowUpRight, Star, CheckCircle2, User } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 type Profile = { username: string | null; full_name: string | null; avatar_url?: string | null } | null
 
@@ -29,139 +31,153 @@ export function ChallengeFeedCard({
   hasSession: boolean
 }) {
   const diff = container.difficulty || 'medium'
-  const diffClass =
-    diff === 'easy'
-      ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
-      : diff === 'hard'
-        ? 'border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-400'
-        : 'border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-300'
+  
+  const diffStyles = {
+    easy: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20',
+    medium: 'text-amber-500 bg-amber-500/10 border-amber-500/20',
+    hard: 'text-rose-500 bg-rose-500/10 border-rose-500/20'
+  }[diff as 'easy' | 'medium' | 'hard'] || 'text-amber-500 bg-amber-500/10 border-amber-500/20'
 
   return (
-    <article className="group relative overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-md">
-      <div className="flex flex-col gap-5 p-6 sm:flex-row">
-        {container.thumbnail_url && (
-          <div className="aspect-video w-full shrink-0 self-start overflow-hidden rounded-xl border border-border bg-muted sm:w-56 md:w-64">
+    <article className="group relative overflow-hidden rounded-3xl border border-border bg-card/50 backdrop-blur-sm transition-all duration-300 hover:border-primary/30 hover:shadow-[0_0_2rem_-0.5rem_rgba(var(--primary),0.15)] sm:h-[220px]">
+      <div className="flex h-full flex-col p-5 sm:flex-row sm:gap-8">
+        {/* Visual Preview */}
+        <div className="relative aspect-video w-full shrink-0 overflow-hidden rounded-2xl bg-muted sm:h-full sm:w-64">
+          {container.thumbnail_url ? (
             <img
               src={container.thumbnail_url}
               alt={container.title}
-              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+              className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
             />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-primary/5 to-primary/10">
+               <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, currentColor 1px, transparent 0)', backgroundSize: '24px 24px' }} />
+               <span className="text-[10px] font-bold uppercase tracking-widest text-primary/20">No Preview</span>
+            </div>
+          )}
+          <div className="absolute top-3 left-3">
+            <span className={cn(
+              "inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider backdrop-blur-md transition-colors",
+              diffStyles
+            )}>
+              {diff}
+            </span>
           </div>
-        )}
-        <div className="flex flex-1 flex-col justify-between min-w-0">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-            <div className="min-w-0 flex-1 flex flex-col gap-3">
-              <div className="flex flex-wrap items-center gap-2 gap-y-2">
-                <Link
-                  href={`/challenge/${container.id}`}
-                  className="text-lg font-semibold tracking-tight text-foreground transition-colors group-hover:text-primary md:text-xl"
-                >
-                  {container.title}
-                </Link>
-                <span
-                  className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${diffClass}`}
-                >
-                  {diff}
-                </span>
-              </div>
-              {container.description && (
-                <p className="text-sm leading-relaxed text-muted-foreground line-clamp-2">{container.description}</p>
-              )}
-              {container.tags && container.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
-                  {container.tags.map((tag: string, i: number) => (
-                    <span
-                      key={i}
-                      className="rounded-md border border-border bg-muted/50 px-2 py-0.5 text-[11px] font-medium text-muted-foreground"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              )}
-              <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
-                <span className="inline-flex items-center gap-1.5">
-                  <svg className="size-3.5 shrink-0 text-primary/80" fill="currentColor" viewBox="0 0 20 20" aria-hidden>
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                  </svg>
-                  {container.average_rating != null ? Number(container.average_rating).toFixed(1) : '—'} ·{' '}
-                  {container.ratings_count ?? 0} ratings
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <svg className="size-3.5 shrink-0 text-primary/80" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  {(container.number_of_completions ?? 0).toLocaleString()} completions
-                </span>
-              </div>
+        </div>
+
+        {/* Content */}
+        <div className="flex flex-1 flex-col min-w-0 py-0.5">
+          <div className="flex-1 space-y-3">
+            <div className="space-y-1">
+              <Link
+                href={`/challenge/${container.id}`}
+                className="inline-flex max-w-full items-center gap-2 text-xl font-bold tracking-tight text-foreground transition-all hover:text-primary group/title"
+              >
+                <span className="truncate">{container.title}</span>
+                <ArrowUpRight className="size-4 shrink-0 opacity-0 -translate-y-1 translate-x-1 transition-all group-hover/title:opacity-100 group-hover/title:translate-y-0 group-hover/title:translate-x-0" />
+              </Link>
+              
+              <p className="min-h-[1.25rem] max-w-2xl text-sm font-medium leading-relaxed text-muted-foreground line-clamp-1">
+                {container.description || "\u00A0"}
+              </p>
             </div>
 
-            <div className="flex shrink-0 flex-col gap-3 sm:flex-row lg:flex-col lg:items-stretch">
+            <div className="flex flex-wrap gap-2 overflow-hidden h-6">
+              {container.tags && container.tags.slice(0, 3).map((tag: string, i: number) => (
+                <span
+                  key={i}
+                  className="rounded-full bg-muted/50 px-3 py-0.5 text-[10px] font-semibold text-muted-foreground/80 transition-colors hover:bg-primary/10 hover:text-primary"
+                >
+                  #{tag}
+                </span>
+              ))}
+              {container.tags && container.tags.length > 3 && (
+                <span className="text-[10px] font-semibold text-muted-foreground/40 self-center">
+                  +{container.tags.length - 3} more
+                </span>
+              )}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-5 text-xs font-semibold text-muted-foreground/60">
+              <span className="inline-flex items-center gap-1.5">
+                <Star className="size-3.5 text-amber-500 fill-amber-500" />
+                <span className="text-foreground">{container.average_rating != null ? Number(container.average_rating).toFixed(1) : '—'}</span>
+                <span>({container.ratings_count ?? 0})</span>
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <CheckCircle2 className="size-3.5 text-primary/80" />
+                <span className="text-foreground">{(container.number_of_completions ?? 0).toLocaleString()}</span>
+                <span>completions</span>
+              </span>
+            </div>
+          </div>
+
+          <div className="mt-4 flex items-center justify-between gap-4 border-t border-border/50 pt-4">
+            <div className="flex items-center gap-3">
+              {container.profiles?.username ? (
+                <Link
+                  href={`/u/${encodeURIComponent(container.profiles.username)}`}
+                  className="group/author flex items-center gap-2.5 transition-opacity hover:opacity-80"
+                >
+                  <div className="relative size-8 shrink-0 overflow-hidden rounded-full border border-border/50 bg-muted">
+                    {container.profiles.avatar_url ? (
+                      <img src={container.profiles.avatar_url} alt={container.profiles.username} className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-[10px] font-bold text-muted-foreground">
+                        {(container.profiles.username[0] || 'U').toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span className="truncate text-xs font-bold text-foreground">
+                      {container.profiles?.full_name || container.profiles.username}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground/60">@{container.profiles.username}</span>
+                  </div>
+                </Link>
+              ) : (
+                <div className="flex items-center gap-2.5">
+                   <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-border/50 bg-muted">
+                    <User className="size-4 text-muted-foreground/40" />
+                  </div>
+                  <span className="text-xs font-bold text-muted-foreground">Anonymous</span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
               {hasSession ? (
-                <>
-                  <form action={deployContainer} className="min-w-[7.5rem]">
+                <div className="flex items-center gap-2">
+                  <form action={deployContainer}>
                     <input type="hidden" name="image" value={container.content_url ?? ''} />
                     <input type="hidden" name="postId" value={container.id} />
                     {userId && <input type="hidden" name="userId" value={userId} />}
                     <input type="hidden" name="actionType" value="resume" />
                     <button
                       type="submit"
-                      className="w-full cursor-pointer rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+                      className="inline-flex h-9 cursor-pointer items-center justify-center rounded-full bg-primary px-5 text-xs font-bold text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:scale-[1.02] active:scale-95"
                     >
-                      Resume
+                      Resume Work
                     </button>
-                    </form>
-                    {userId && (
+                  </form>
+                  {userId && (
                     <ResetProgressButton 
                       postId={container.id} 
                       userId={userId} 
-                      className="w-full cursor-pointer rounded-lg border border-border bg-transparent px-4 py-2.5 text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted"
+                      className="h-9 cursor-pointer rounded-full border border-border bg-background px-4 text-xs font-bold text-muted-foreground transition-all hover:bg-muted"
                     />
-                    )}
-                    </>
-                    ) : (                    <Link
-                    href={`/challenge/${container.id}`}
-                    className="inline-flex min-w-[7.5rem] cursor-pointer items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
-                    >
-                    Open Challenge
-                    </Link>
-                    )}            </div>
-          </div>
-
-          <footer className="mt-6 flex flex-col gap-2 border-t border-border pt-5 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex min-w-0 items-center gap-2">
-              {container.profiles?.username ? (
-                <Link
-                  href={`/u/${encodeURIComponent(container.profiles.username)}`}
-                  className="flex items-center gap-2 group/author shrink-0"
-                >
-                  <div className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted text-xs font-semibold text-muted-foreground transition-colors group-hover/author:bg-primary/10 group-hover/author:text-primary">
-                    {container.profiles.avatar_url ? (
-                      <img src={container.profiles.avatar_url} alt={container.profiles.username} className="h-full w-full object-cover" />
-                    ) : (
-                      (container.profiles.username[0] || 'U').toUpperCase()
-                    )}
-                  </div>
-                  <span className="truncate text-sm font-medium text-muted-foreground transition-colors group-hover/author:text-primary">
-                    {container.profiles?.full_name || container.profiles.username}
-                  </span>
-                </Link>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">
-                    U
-                  </div>
-                  <span className="truncate text-sm font-medium text-muted-foreground">
-                    {container.profiles?.full_name || 'Anonymous'}
-                  </span>
+                  )}
                 </div>
+              ) : (
+                <Link
+                  href={`/challenge/${container.id}`}
+                  className="inline-flex h-9 cursor-pointer items-center justify-center rounded-full bg-primary px-5 text-xs font-bold text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:scale-[1.02] active:scale-95"
+                >
+                  Start Challenge
+                </Link>
               )}
-            </div>            {container.content_url && (
-              <code className="hidden max-w-[220px] truncate rounded-md bg-muted/80 px-2 py-1 font-mono text-[10px] text-muted-foreground sm:block">
-                {container.content_url}
-              </code>
-            )}
-          </footer>
+            </div>
+          </div>
         </div>
       </div>
     </article>
