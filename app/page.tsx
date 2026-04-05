@@ -156,7 +156,7 @@ export default async function Home() {
                 Your workspace can be resumed from the feed when you&apos;re signed in.
               </p>
               <Link
-                href="/preview"
+                href="/studio"
                 className="mt-4 inline-flex text-sm font-medium text-primary hover:underline"
               >
                 Open active session →

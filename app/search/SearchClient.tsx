@@ -160,6 +160,9 @@ export default function SearchClient() {
   const showChallengeFilters = scope === 'challenges' || scope === 'all'
   const term = q.trim()
 
+  const selectClass =
+    'h-10 w-full min-w-[10rem] cursor-pointer rounded-lg border border-input bg-background px-3 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring'
+
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6">
       <h1 className="mb-6 text-2xl font-bold text-foreground">Search</h1>
@@ -174,106 +177,76 @@ export default function SearchClient() {
           autoComplete="off"
         />
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-          <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Show</span>
-          <div className="flex flex-wrap gap-2">
-            {(
-              [
-                ['all', 'All'],
-                ['profiles', 'Profiles'],
-                ['challenges', 'Challenges'],
-              ] as const
-            ).map(([value, label]) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => setScope(value)}
-                className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                  scope === value
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
+        <div
+          className={`grid gap-3 sm:grid-cols-2 lg:grid-cols-4 ${showChallengeFilters ? 'border-t border-border pt-4' : ''}`}
+        >
+          <div className="space-y-1.5">
+            <label htmlFor="search-scope" className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Show
+            </label>
+            <select
+              id="search-scope"
+              value={scope}
+              onChange={(e) => setScope(e.target.value as Scope)}
+              className={selectClass}
+            >
+              <option value="all">All</option>
+              <option value="profiles">Profiles</option>
+              <option value="challenges">Challenges</option>
+            </select>
           </div>
+
+          {showChallengeFilters && (
+            <>
+              <div className="space-y-1.5">
+                <label htmlFor="search-sort" className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Sort
+                </label>
+                <select
+                  id="search-sort"
+                  value={sort}
+                  onChange={(e) => setSort(e.target.value as ChallengeSort)}
+                  className={selectClass}
+                >
+                  <option value="latest">Latest</option>
+                  <option value="ranking">Ranking</option>
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label htmlFor="search-difficulty" className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Difficulty
+                </label>
+                <select
+                  id="search-difficulty"
+                  value={difficulty}
+                  onChange={(e) => setDifficulty(e.target.value as Difficulty)}
+                  className={selectClass}
+                >
+                  <option value="all">Any</option>
+                  <option value="easy">Easy</option>
+                  <option value="medium">Medium</option>
+                  <option value="hard">Hard</option>
+                </select>
+              </div>
+
+              <div className="space-y-1.5 sm:col-span-2 lg:col-span-1">
+                <label htmlFor="search-tag" className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Tag
+                </label>
+                <input
+                  id="search-tag"
+                  type="text"
+                  value={tag}
+                  onChange={(e) => setTag(e.target.value)}
+                  placeholder="e.g. docker (one tag, case-insensitive)"
+                  className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  autoComplete="off"
+                />
+              </div>
+            </>
+          )}
         </div>
-
-        {showChallengeFilters && (
-          <div className="space-y-4 border-t border-border pt-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-              <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                Sort
-              </span>
-              <div className="flex flex-wrap gap-2">
-                {(
-                  [
-                    ['latest', 'Latest'],
-                    ['ranking', 'Ranking'],
-                  ] as const
-                ).map(([value, label]) => (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => setSort(value)}
-                    className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                      sort === value
-                        ? 'bg-secondary text-secondary-foreground ring-1 ring-border'
-                        : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-              <label htmlFor="search-tag" className="text-xs font-semibold tracking-wide text-muted-foreground uppercase shrink-0">
-                Tags
-              </label>
-              <input
-                id="search-tag"
-                type="text"
-                value={tag}
-                onChange={(e) => setTag(e.target.value)}
-                placeholder="e.g. docker (matches one tag, case-insensitive)"
-                className="h-10 w-full min-w-0 flex-1 rounded-lg border border-input bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                autoComplete="off"
-              />
-            </div>
-
-            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-              <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                Difficulty
-              </span>
-              <div className="flex flex-wrap gap-2">
-                {(
-                  [
-                    ['all', 'Any'],
-                    ['easy', 'Easy'],
-                    ['medium', 'Medium'],
-                    ['hard', 'Hard'],
-                  ] as const
-                ).map(([value, label]) => (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => setDifficulty(value)}
-                    className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                      difficulty === value
-                        ? 'bg-secondary text-secondary-foreground ring-1 ring-border'
-                        : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
       {loading ? (

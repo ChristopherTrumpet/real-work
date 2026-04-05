@@ -94,12 +94,14 @@ export function BuildToaster() {
           <Button 
             className="w-full h-10 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl shadow-lg shadow-green-500/20"
             onClick={() => {
-              router.push(`/preview/${result.postId}?port=${result.port}&containerId=${result.containerId}`)
+              router.push(
+                `/studio?port=${encodeURIComponent(String(result.port))}&containerId=${encodeURIComponent(String(result.containerId))}&postId=${encodeURIComponent(String(result.postId))}`
+              )
               dismissBuild()
             }}
           >
             <ExternalLink className="mr-2 size-4" />
-            Go to Preview Page
+            Open studio workspace
           </Button>
         </div>
       )}
@@ -143,11 +145,13 @@ export function BuildToaster() {
               <Button 
                 className="w-full h-11 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl shadow-lg shadow-green-500/20"
                 onClick={() => {
-                  router.push(`/preview/${result.postId}?port=${result.port}&containerId=${result.containerId}`)
+                  router.push(
+                `/studio?port=${encodeURIComponent(String(result.port))}&containerId=${encodeURIComponent(String(result.containerId))}&postId=${encodeURIComponent(String(result.postId))}`
+              )
                   dismissBuild()
                 }}
               >
-                Launch Challenge Workspace
+                Open studio workspace
               </Button>
             </div>
           )}

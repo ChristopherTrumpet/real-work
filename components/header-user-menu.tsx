@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { DropdownMenu } from 'radix-ui'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { avatarInitials } from '@/lib/avatar-initials'
@@ -17,6 +17,15 @@ type HeaderUserMenuProps = {
 export function HeaderUserMenu({ email, avatarUrl, fullName, username }: HeaderUserMenuProps) {
   const signOutFormRef = useRef<HTMLFormElement>(null)
   const initials = avatarInitials(fullName, username, email)
+  const trimmedAvatar = avatarUrl?.trim() ?? ''
+  const [imageFailed, setImageFailed] = useState(false)
+
+  useEffect(() => {
+    setImageFailed(false)
+  }, [trimmedAvatar])
+
+  const showPhoto = Boolean(trimmedAvatar) && !imageFailed
+
   const publicHandle = username?.trim() ?? ''
   const publicProfileHref = publicHandle
     ? `/u/${encodeURIComponent(publicHandle)}`
@@ -44,11 +53,17 @@ export function HeaderUserMenu({ email, avatarUrl, fullName, username }: HeaderU
             )}
             aria-label="Account menu"
           >
-            {avatarUrl ? (
+            {showPhoto ? (
               // eslint-disable-next-line @next/next/no-img-element -- user-supplied URL; avoids remotePatterns for every host
-              <img src={avatarUrl} alt="" className="size-9 object-cover" referrerPolicy="no-referrer" />
+              <img
+                src={trimmedAvatar}
+                alt=""
+                className="size-9 object-cover"
+                referrerPolicy="no-referrer"
+                onError={() => setImageFailed(true)}
+              />
             ) : (
-              <span className="text-xs font-semibold text-muted-foreground">{initials}</span>
+              <span className="text-xs font-semibold text-foreground">{initials}</span>
             )}
           </button>
         </DropdownMenu.Trigger>

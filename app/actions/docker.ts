@@ -43,6 +43,7 @@ export async function deployContainer(formData: FormData) {
   const isCloudImage = image.startsWith(registry)
 
   let hostPort = ''
+  let containerId = ''
   let volumeMount = ''
   let workdir = '/config' // Default to /config for these types of images
   
@@ -100,7 +101,7 @@ export async function deployContainer(formData: FormData) {
     // 3. Start the container
     const runCmd = `docker run -d --shm-size="1gb" -p 0:${internalPort} ${volumeMount} ${image}`
     const { stdout: runStdout } = await execAsync(runCmd)
-    const containerId = runStdout.trim()
+    containerId = runStdout.trim()
 
     // 4. Fix permissions for the determined workdir (for all users)
     let permSuccess = false;
@@ -132,10 +133,13 @@ export async function deployContainer(formData: FormData) {
     redirect('/error?message=' + encodeURIComponent('Docker deployment failed: ' + (error.stderr || error.message)))
   }
 
+  const portQ = encodeURIComponent(hostPort)
+  const cidQ = encodeURIComponent(containerId)
+
   if (postId) {
-    redirect(`/preview?port=${hostPort}&postId=${postId}`)
+    redirect(`/studio?port=${portQ}&containerId=${cidQ}&postId=${encodeURIComponent(postId)}`)
   } else {
-    redirect(`/preview?port=${hostPort}`)
+    redirect(`/studio?port=${portQ}&containerId=${cidQ}`)
   }
 }
 

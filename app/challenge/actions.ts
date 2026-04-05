@@ -49,5 +49,6 @@ export async function addComment(formData: FormData) {
   revalidatePath(`/challenge/${postId}`)
   revalidatePath(`/challenge/${postId}/complete`)
   revalidatePath('/preview')
+  revalidatePath('/studio')
   return { ok: true as const }
 }

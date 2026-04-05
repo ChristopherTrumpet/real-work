@@ -2,7 +2,7 @@
 export function avatarInitials(
   fullName: string | null | undefined,
   username: string | null | undefined,
-  email: string
+  email: string | null | undefined
 ): string {
   const n = fullName?.trim()
   if (n) {
@@ -12,10 +12,17 @@ export function avatarInitials(
       const b = parts[parts.length - 1]?.[0]
       if (a && b) return (a + b).toUpperCase()
     }
-    return n.slice(0, 2).toUpperCase()
+    const slice = n.slice(0, 2).toUpperCase()
+    return slice || '?'
   }
   const u = username?.trim()
-  if (u) return u.slice(0, 2).toUpperCase()
-  const local = email.split('@')[0] ?? '?'
-  return local.slice(0, 2).toUpperCase()
+  if (u) {
+    const slice = u.slice(0, 2).toUpperCase()
+    return slice || '?'
+  }
+  const e = email?.trim()
+  if (!e) return '?'
+  const local = e.split('@')[0] ?? ''
+  const slice = local.slice(0, 2).toUpperCase()
+  return slice || '?'
 }
