@@ -4,6 +4,8 @@ import { createClient } from '@/utils/supabase/server'
 import { updateProfile } from './actions'
 import { DeleteChallengeButton } from '@/components/profile/delete-challenge-button'
 import { DeleteAccountButton } from '@/components/profile/DeleteAccountButton'
+import { Button } from '@/components/ui/button'
+import { ArrowLeft } from 'lucide-react'
 
 export default async function ProfilePage() {
   const supabase = await createClient()
@@ -34,9 +36,18 @@ export default async function ProfilePage() {
   return (
     <div className="min-h-screen bg-background pb-12">
       <div className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6 sm:py-10">
-        <Link href="/" className="mb-6 inline-block text-sm text-muted-foreground hover:text-foreground">
-          ← Return Home
-        </Link>
+        <div className="mb-8">
+          <Link href="/">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="-ml-3 gap-2 text-muted-foreground hover:text-foreground"
+            >
+              <ArrowLeft className="size-4" />
+              Back
+            </Button>
+          </Link>
+        </div>
 
         <div className="mb-10 flex flex-col gap-2">
           <h1 className="text-3xl font-bold tracking-tight text-foreground">Your Profile</h1>

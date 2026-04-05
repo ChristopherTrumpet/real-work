@@ -3,6 +3,8 @@ import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/utils/supabase/server'
 import { ReadOnlyStarRating } from '@/components/read-only-star-rating'
 import { CompletionFeedbackForm } from './CompletionFeedbackForm'
+import { Button } from '@/components/ui/button'
+import { ArrowLeft } from 'lucide-react'
 
 type PageProps = { params: Promise<{ id: string }> }
 
@@ -47,12 +49,22 @@ export default async function ChallengeCompletePage({ params }: PageProps) {
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-10 sm:px-6">
-      <Link href="/" className="text-sm text-muted-foreground hover:text-foreground">
-        ← Return Home
-      </Link>
-      <Link href={`/challenge/${id}`} className="ml-4 text-sm text-muted-foreground hover:text-foreground">
-        Challenge page
-      </Link>
+      <div className="mb-8 flex items-center gap-2">
+        <Link href="/">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="-ml-3 gap-2 text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="size-4" />
+            Back
+          </Button>
+        </Link>
+        <span className="text-muted-foreground/30">|</span>
+        <Link href={`/challenge/${id}`} className="text-sm text-muted-foreground hover:text-foreground">
+          Challenge page
+        </Link>
+      </div>
 
       <header className="mt-8">
         <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400">Challenge completed</p>

@@ -4,6 +4,8 @@ import { createClient } from '@/utils/supabase/server'
 import DifficultyWheel from '@/components/DifficultyWheel'
 import { ContributionHeatmap } from '@/components/ContributionHeatmap'
 import { UserPublishedChallenges } from '@/components/profile/UserPublishedChallenges'
+import { Button } from '@/components/ui/button'
+import { ArrowLeft } from 'lucide-react'
 
 type PageProps = { params: Promise<{ username: string }> }
 
@@ -82,9 +84,18 @@ export default async function PublicProfilePage({ params }: PageProps) {
   return (
     <div className="min-h-screen bg-background pb-12">
       <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
-        <Link href="/" className="mb-6 inline-block text-sm text-muted-foreground hover:text-foreground">
-          ← Return Home
-        </Link>
+        <div className="mb-8">
+          <Link href="/">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="-ml-3 gap-2 text-muted-foreground hover:text-foreground"
+            >
+              <ArrowLeft className="size-4" />
+              Back
+            </Button>
+          </Link>
+        </div>
 
         <div className="mb-10 flex flex-col sm:flex-row sm:items-start justify-between gap-6">
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">

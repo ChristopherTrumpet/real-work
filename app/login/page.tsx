@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { ArrowLeft } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { login, signup } from './actions'
 
 const inputClass =
@@ -41,11 +43,15 @@ export default function LoginPage() {
     <main className="min-h-screen bg-background text-foreground">
       <div className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-4 py-10 sm:px-6">
         <div className="mb-8">
-          <Link
-            href="/"
-            className="inline-flex h-11 items-center rounded-full border border-border bg-card px-5 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-muted/80"
-          >
-            ← Back to home
+          <Link href="/">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="-ml-3 gap-2 text-muted-foreground hover:text-foreground"
+            >
+              <ArrowLeft className="size-4" />
+              Back
+            </Button>
           </Link>
         </div>
 
