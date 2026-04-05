@@ -5,6 +5,9 @@ import { deployContainer } from '@/app/actions/docker'
 import { CommentThread } from '@/components/CommentThread'
 import { ChallengeActionButtons } from '@/components/ChallengeActionButtons'
 import { ReadOnlyStarRating, ratingRowsToBreakdown } from '@/components/read-only-star-rating'
+import { ArrowLeft, Rocket, Play, CheckCircle2, Terminal, Globe, ShieldCheck } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import fs from 'fs'
 import path from 'path'
 
@@ -70,75 +73,91 @@ export default async function ChallengePage({ params }: PageProps) {
   return (
     <div className="min-h-screen bg-background pb-12">
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-        <Link href="/" className="mb-6 inline-block text-sm text-muted-foreground hover:text-foreground">
-          ← Return Home
-        </Link>
+        <div className="mb-8">
+          <Link href="/">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="-ml-3 gap-2 text-muted-foreground hover:text-foreground"
+            >
+              <ArrowLeft className="size-4" />
+              Back
+            </Button>
+          </Link>
+        </div>
 
         <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:gap-10">
           <div className="flex min-w-0 flex-1 flex-col gap-8">
-            <article className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+            <article className="overflow-hidden rounded-3xl border border-border bg-card/50 backdrop-blur-sm shadow-xl shadow-primary/5">
               {post.thumbnail_url && (
-                <div className="aspect-video w-full border-b border-border bg-muted">
+                <div className="aspect-video w-full border-b border-border bg-muted overflow-hidden">
                   <img
                     src={post.thumbnail_url}
                     alt={post.title}
-                    className="h-full w-full object-cover"
+                    className="h-full w-full object-cover transition-transform duration-700 hover:scale-105"
                   />
                 </div>
               )}
-              <div className="p-6 sm:p-8">
+              <div className="p-6 sm:p-10">
                 <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <h1 className="text-2xl font-bold text-foreground md:text-3xl">{post.title}</h1>
-                    <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
-                      <span>by</span>
+                  <div className="space-y-4">
+                    <div className="inline-flex items-center rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-primary">
+                      Challenge Workspace
+                    </div>
+                    <h1 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl md:text-5xl">
+                      {post.title}
+                    </h1>
+                    <div className="flex items-center gap-3 text-sm">
+                      <span className="text-muted-foreground">Authored by</span>
                       {author?.username ? (
                         <Link 
                           href={`/u/${encodeURIComponent(author.username)}`}
                           className="group/author flex items-center gap-2"
                         >
-                          <div className="flex size-7 items-center justify-center overflow-hidden rounded-full bg-muted text-[10px] font-semibold text-muted-foreground transition-colors group-hover/author:bg-primary/10 group-hover/author:text-primary">
+                          <div className="relative size-8 overflow-hidden rounded-full border border-border bg-muted ring-primary/10 group-hover/author:ring-4 transition-all">
                             {author.avatar_url ? (
                               <img src={author.avatar_url} alt={author.username} className="h-full w-full object-cover" />
                             ) : (
-                              (author.username[0] || 'U').toUpperCase()
+                              <div className="flex h-full w-full items-center justify-center text-[10px] font-bold text-muted-foreground uppercase">
+                                {author.username[0]}
+                              </div>
                             )}
                           </div>
-                          <span className="font-medium text-primary hover:underline transition-colors group-hover/author:text-primary/80">
+                          <span className="font-bold text-foreground group-hover/author:text-primary transition-colors">
                             {author.full_name || author.username}
                           </span>
                         </Link>
                       ) : (
-                        <div className="flex items-center gap-2">
-                          <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-semibold text-muted-foreground">
-                            U
-                          </div>
-                          <span className="font-medium text-foreground">
-                            {author?.full_name || 'Unknown'}
-                          </span>
-                        </div>
+                        <span className="font-bold text-foreground">Anonymous</span>
                       )}
                     </div>
                   </div>
                   <span
-                    className={`shrink-0 rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-wider ${
+                    className={cn(
+                      "shrink-0 rounded-full border px-4 py-1.5 text-[11px] font-bold uppercase tracking-widest backdrop-blur-md",
                       post.difficulty === 'easy'
-                        ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                        ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
                         : post.difficulty === 'hard'
-                          ? 'border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-400'
-                          : 'border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-300'
-                    }`}
+                          ? 'border-rose-500/30 bg-rose-500/10 text-rose-600 dark:text-rose-400'
+                          : 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400'
+                    )}
                   >
                     {post.difficulty || 'medium'}
                   </span>
                 </div>
 
-                {post.description && <p className="mt-6 text-base leading-relaxed text-foreground/90 whitespace-pre-wrap">{post.description}</p>}
+                {post.description && (
+                  <div className="mt-8 border-t border-border/50 pt-8">
+                    <p className="text-lg leading-relaxed text-foreground/80 whitespace-pre-wrap font-medium">
+                      {post.description}
+                    </p>
+                  </div>
+                )}
 
                 {post.tags && post.tags.length > 0 && (
-                  <div className="mt-6 flex flex-wrap gap-1.5">
+                  <div className="mt-8 flex flex-wrap gap-2">
                     {post.tags.map((tag: string, i: number) => (
-                      <span key={i} className="rounded-md border border-border bg-muted/50 px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                      <span key={i} className="rounded-full bg-muted/50 px-4 py-1.5 text-[11px] font-bold text-muted-foreground uppercase tracking-tight transition-colors hover:bg-primary/10 hover:text-primary">
                         #{tag}
                       </span>
                     ))}
@@ -146,26 +165,68 @@ export default async function ChallengePage({ params }: PageProps) {
                 )}
 
                 {user && (
-                  <div className="mt-8 flex flex-wrap items-center gap-3 border-t border-border pt-8">
-                    <ChallengeActionButtons 
-                      hasSession={hasSession} 
-                      post={post} 
-                      user={user} 
-                    />
-                    <div className="ml-auto flex items-center gap-4 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <span className="font-semibold text-foreground">{post.number_of_completions ?? 0}</span> solves
-                      </span>
-                      {post.content_url && (
-                        <code className="hidden rounded bg-muted/80 px-2 py-1 font-mono sm:block">{post.content_url}</code>
+                  <div className="mt-10 flex flex-col gap-6 border-t border-border/50 pt-10 sm:flex-row sm:items-center">
+                    <div className="flex flex-1 flex-wrap items-center gap-4">
+                      {hasSession ? (
+                        <div className="flex flex-wrap items-center gap-3">
+                          <form action={deployContainer}>
+                            <input type="hidden" name="image" value={post.content_url ?? ''} />
+                            <input type="hidden" name="postId" value={post.id} />
+                            <input type="hidden" name="userId" value={user.id} />
+                            <input type="hidden" name="actionType" value="resume" />
+                            <Button
+                              type="submit"
+                              size="lg"
+                              className="h-14 px-8 font-bold shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                            >
+                              <Play className="mr-2 size-5 fill-current" />
+                              Resume Workspace
+                            </Button>
+                          </form>
+                          <ResetProgressButton 
+                            postId={post.id} 
+                            userId={user.id} 
+                            className="h-14 px-6 rounded-md font-bold text-muted-foreground transition-all hover:bg-muted"
+                          />
+                        </div>
+                      ) : (
+                        <form action={deployContainer} className="w-full sm:w-auto">
+                          <input type="hidden" name="image" value={post.content_url ?? ''} />
+                          <input type="hidden" name="postId" value={post.id} />
+                          <input type="hidden" name="userId" value={user.id} />
+                          <input type="hidden" name="actionType" value="launch" />
+                          <Button
+                            type="submit"
+                            size="lg"
+                            className="h-14 w-full px-10 font-bold shadow-xl shadow-primary/20 transition-all hover:scale-[1.02] active:scale-[0.98] sm:w-auto"
+                          >
+                            <Rocket className="mr-2 size-5" />
+                            Launch Challenge
+                          </Button>
+                        </form>
                       )}
+                    </div>
+                    
+                    <div className="flex flex-col gap-3 text-xs font-bold uppercase tracking-widest text-muted-foreground/60 sm:items-end">
+                      <div className="flex items-center gap-4">
+                        <span className="flex items-center gap-1.5">
+                          <CheckCircle2 className="size-3.5 text-primary" />
+                          <span className="text-foreground">{post.number_of_completions ?? 0}</span> solves
+                        </span>
+                        {post.content_url && (
+                          <div className="flex items-center gap-1.5 rounded-full bg-muted/80 px-3 py-1 font-mono lowercase tracking-normal">
+                            <Terminal className="size-3 text-primary" />
+                            <span className="max-w-[120px] truncate">{post.content_url}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}
               </div>
             </article>
 
-            <section className="rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8">
+            <section className="rounded-3xl border border-border bg-card/50 backdrop-blur-sm p-6 shadow-sm sm:p-10">
               <CommentThread
                 postId={post.id}
                 flatComments={flatComments}
@@ -177,59 +238,69 @@ export default async function ChallengePage({ params }: PageProps) {
             </section>
           </div>
 
-          <aside className="w-full shrink-0 lg:sticky lg:top-20 lg:w-[min(100%,380px)] lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
-            <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+          <aside className="w-full shrink-0 space-y-6 lg:sticky lg:top-20 lg:w-[min(100%,380px)] lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
+            <div className="rounded-3xl border border-border bg-card/50 backdrop-blur-sm p-6 shadow-sm">
               <ReadOnlyStarRating
                 averageRating={post.average_rating}
                 ratingsCount={post.ratings_count}
                 countsByStar={ratingBreakdown}
-                className="border-b border-border pb-5"
+                className="border-b border-border/50 pb-6"
               />
-              <p className="mt-4 text-xs text-muted-foreground">
+              <p className="mt-5 text-xs font-medium leading-relaxed text-muted-foreground">
                 Star ratings are submitted on the completion page after you finish. Solvers can discuss in the section
                 below the challenge.
               </p>
             </div>
 
-            <div className="mt-6 rounded-2xl border border-border bg-card p-5 shadow-sm">
-              <h3 className="mb-4 text-xs font-bold uppercase tracking-widest text-muted-foreground">Challenge Info</h3>
-              <div className="space-y-4">
+            <div className="rounded-3xl border border-border bg-card/50 backdrop-blur-sm p-6 shadow-sm">
+              <h3 className="mb-6 text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Challenge Technical Specs</h3>
+              <div className="space-y-5">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Difficulty</span>
-                  <span className={`font-semibold capitalize ${
+                  <span className="font-medium text-muted-foreground">Difficulty Level</span>
+                  <span className={cn(
+                    "font-bold uppercase tracking-widest text-[11px]",
                     post.difficulty === 'easy' ? 'text-emerald-500' : 
                     post.difficulty === 'hard' ? 'text-rose-500' : 'text-amber-500'
-                  }`}>
+                  )}>
                     {post.difficulty || 'medium'}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Language</span>
-                  <span className="font-medium text-foreground capitalize">{post.benchmark_language || 'Any'}</span>
+                  <span className="font-medium text-muted-foreground">Stack / Language</span>
+                  <span className="flex items-center gap-1.5 font-bold text-foreground">
+                    <Globe className="size-3.5 text-primary/60" />
+                    {post.benchmark_language || 'Any'}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Added</span>
-                  <span className="font-medium text-foreground">
+                  <span className="font-medium text-muted-foreground">Release Date</span>
+                  <span className="font-bold text-foreground">
                     {new Date(post.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Total Solves</span>
-                  <span className="font-medium text-foreground">{post.number_of_completions ?? 0}</span>
+                  <span className="font-medium text-muted-foreground">Total Solves</span>
+                  <span className="flex items-center gap-1.5 font-bold text-foreground">
+                    <CheckCircle2 className="size-3.5 text-primary/60" />
+                    {post.number_of_completions ?? 0}
+                  </span>
                 </div>
                 {post.benchmark_timeout_ms && (
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Timeout</span>
-                    <span className="font-medium text-foreground">{(post.benchmark_timeout_ms / 1000).toFixed(1)}s</span>
+                    <span className="font-medium text-muted-foreground">Execution Limit</span>
+                    <span className="flex items-center gap-1.5 font-bold text-foreground">
+                      <ShieldCheck className="size-3.5 text-primary/60" />
+                      {(post.benchmark_timeout_ms / 1000).toFixed(1)}s
+                    </span>
                   </div>
                 )}
                 
                 {post.tags && post.tags.length > 0 && (
-                  <div className="border-t border-border pt-4">
-                    <span className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Tags</span>
-                    <div className="flex flex-wrap gap-1.5">
+                  <div className="border-t border-border/50 pt-5">
+                    <span className="mb-3 block text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Skills Required</span>
+                    <div className="flex flex-wrap gap-2">
                       {post.tags.map((tag: string, i: number) => (
-                        <span key={i} className="rounded-md bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted/80">
+                        <span key={i} className="rounded-md bg-muted px-2.5 py-1 text-[11px] font-bold text-muted-foreground transition-all hover:bg-primary/10 hover:text-primary">
                           {tag}
                         </span>
                       ))}

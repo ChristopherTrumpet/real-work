@@ -41,6 +41,7 @@ export function UserPublishedChallenges({ initialChallenges, userId, profileId, 
       .from('posts')
       .select('id, title, description, difficulty, number_of_completions, average_rating, ratings_count, created_at, user_id')
       .eq('user_id', profileId)
+      .eq('is_draft', false)
       .order('created_at', { ascending: false })
       .range(from, to)
 

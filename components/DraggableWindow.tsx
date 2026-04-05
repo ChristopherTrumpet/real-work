@@ -11,8 +11,15 @@ interface DraggableWindowProps {
 
 export default function DraggableWindow({ port, onClose }: DraggableWindowProps) {
   const [isReady, setIsReady] = useState(false)
+  const [hostname, setHostname] = useState<string>('localhost')
   const [refreshKey, setRefreshKey] = useState(Date.now())
   const [isKilling, setIsKilling] = useState(false)
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setHostname(window.location.hostname)
+    }
+  }, [])
 
   // Window state
   const [isMaximized, setIsMaximized] = useState(false)
@@ -28,7 +35,7 @@ export default function DraggableWindow({ port, onClose }: DraggableWindowProps)
   const resizeStartSize = useRef({ width: 0, height: 0 })
   const windowRef = useRef<HTMLDivElement>(null)
   
-  const src = `http://localhost:${port}`
+  const src = `http://${hostname}:${port}`
 
   // Reset readiness when port changes
   useEffect(() => {

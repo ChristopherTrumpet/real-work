@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { SiteHeader } from "@/components/site-header";
 import { BuildProvider } from "@/lib/build-context";
 import { BuildToaster } from "@/components/BuildToaster";
+import ScrollToTop from "@/components/ScrollToTop";
 
 const inter = Inter({subsets:['latin'],variable:'--font-sans'});
 
@@ -38,6 +39,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
         <ThemeProvider>
           <BuildProvider>
+            <ScrollToTop />
             <SiteHeader />
             <div className="flex-1">{children}</div>
             <BuildToaster />

@@ -75,6 +75,7 @@ export default function LibraryClient({ initialUserId }: { initialUserId?: strin
     let query = supabase
       .from('posts')
       .select('*, profiles!user_id(username, full_name, avatar_url)')
+      .eq('is_draft', false)
 
     const term = filters.q.trim()
     if (term) {
@@ -230,7 +231,7 @@ export default function LibraryClient({ initialUserId }: { initialUserId?: strin
         <div className="space-y-10">
           {/* People — only shown when there's a search query with profile results */}
           {searching && profiles.length > 0 && (
-            <section>
+            <section className="animate-in fade-in slide-in-from-top-2 duration-300">
               <h2 className="mb-4 text-xs font-bold uppercase tracking-widest text-muted-foreground">People</h2>
               <ul className="flex flex-col gap-2">
                 {profiles.map((p) =>
@@ -269,13 +270,18 @@ export default function LibraryClient({ initialUserId }: { initialUserId?: strin
                 <h2 className="mb-4 text-xs font-bold uppercase tracking-widest text-muted-foreground">Challenges</h2>
               )}
               <div className="flex flex-col gap-6">
-                {challenges.map((challenge) => (
-                  <ChallengeFeedCard
+                {challenges.map((challenge, i) => (
+                  <div
                     key={challenge.id}
-                    container={challenge}
-                    userId={initialUserId}
-                    hasSession={false}
-                  />
+                    className="animate-fade-up"
+                    style={{ '--stagger': i % PAGE_SIZE } as React.CSSProperties}
+                  >
+                    <ChallengeFeedCard
+                      container={challenge}
+                      userId={initialUserId}
+                      hasSession={false}
+                    />
+                  </div>
                 ))}
               </div>
 

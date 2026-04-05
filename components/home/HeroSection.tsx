@@ -102,7 +102,7 @@ export function HeroSection({ children }: HeroSectionProps) {
         />
       </div>
 
-      <div className="relative z-10 mx-auto max-w-6xl px-4 pb-8 pt-9 sm:px-6 sm:pb-10 sm:pt-10 md:pb-12 md:pt-12">
+      <div className="relative z-10 mx-auto max-w-6xl px-4 pb-16 pt-16 sm:px-6 sm:pb-24 sm:pt-24 md:pb-32 md:pt-32">
         <div className="mx-auto max-w-4xl sm:mx-0">
           <HeroHeadline />
         </div>

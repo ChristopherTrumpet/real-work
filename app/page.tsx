@@ -17,18 +17,20 @@ export default async function Home() {
   const { data: allPosts } = await supabase
     .from('posts')
     .select('id, user_id, number_of_completions')
+    .eq('is_draft', false)
 
   const totalChallenges = allPosts?.length ?? 0
   const totalCompletions = allPosts?.reduce((acc, c) => acc + (c.number_of_completions ?? 0), 0) ?? 0
   const contributorCount = new Set(allPosts?.map((c) => c.user_id as string).filter(Boolean)).size
 
-  // Fetch top 5 by rating
+  // Fetch top 9 by rating
   const { data: topChallenges, error: fetchError } = await supabase
     .from('posts')
     .select('*, profiles!user_id(username, full_name, avatar_url)')
+    .eq('is_draft', false)
     .order('average_rating', { ascending: false, nullsFirst: false })
     .order('ratings_count', { ascending: false })
-    .limit(5)
+    .limit(9)
 
   const list = (topChallenges ?? []) as ChallengeFeedItem[]
 
@@ -58,14 +60,14 @@ export default async function Home() {
           {user ? (
             <Link
               href="/new"
-              className="inline-flex h-11 w-full items-center justify-center rounded-full border border-border bg-card px-6 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-muted sm:w-auto"
+              className="inline-flex h-11 w-full items-center justify-center rounded-full border border-border bg-background/80 px-6 text-sm font-semibold text-foreground shadow-sm backdrop-blur-sm transition-all duration-200 hover:border-primary/35 hover:bg-muted/50 active:scale-[0.98] dark:border-border dark:bg-card/60 dark:hover:border-primary/40 dark:hover:bg-card/90 sm:w-auto"
             >
               Create challenge
             </Link>
           ) : (
             <Link
               href="/login"
-              className="inline-flex h-11 w-full items-center justify-center rounded-full border border-border bg-card px-6 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-muted sm:w-auto"
+              className="inline-flex h-11 w-full items-center justify-center rounded-full border border-border bg-transparent px-6 text-sm font-semibold text-foreground transition-all duration-200 hover:border-primary/30 hover:bg-muted/40 active:scale-[0.98] sm:w-auto"
             >
               Sign in to create
             </Link>
@@ -134,28 +136,20 @@ export default async function Home() {
             </div>
           )}
 
-          <div className="flex flex-col gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {list.length > 0 ? (
-              <>
-                {list.map((container) => (
+              list.map((container, i) => (
+                <div key={container.id} className="animate-fade-up" style={{ '--stagger': i * 0.1 } as React.CSSProperties}>
                   <ChallengeFeedCard
-                    key={container.id}
                     container={container}
                     userId={user?.id}
                     hasSession={activeSessions.has(container.id)}
+                    size="md"
                   />
-                ))}
-                <div className="mt-8 flex justify-center">
-                  <Link
-                    href="/library"
-                    className="inline-flex h-12 items-center justify-center rounded-full border border-border bg-card px-8 text-base font-semibold text-foreground shadow-sm transition-colors hover:bg-muted"
-                  >
-                    View all challenges
-                  </Link>
                 </div>
-              </>
+              ))
             ) : (
-              <div className="rounded-2xl border border-dashed border-border bg-muted/20 px-8 py-16 text-center">
+              <div className="col-span-full rounded-2xl border border-dashed border-border/90 bg-muted/15 px-8 py-20 text-center transition-colors duration-300 hover:border-primary/20 hover:bg-muted/25">
                 <p className="text-base font-medium text-foreground">No highly-rated challenges yet</p>
                 <p className="mt-2 text-sm text-muted-foreground">
                   Check back soon or explore the full library to find something new.
@@ -172,7 +166,7 @@ export default async function Home() {
         </div>
 
         {/* Secondary: custom image — less prominent */}
-        <section className="mt-16 scroll-mt-8 rounded-2xl border border-border bg-card p-6 shadow-sm md:p-8">
+        <section className="mt-20 scroll-mt-8 rounded-2xl border border-border/80 bg-card p-6 shadow-sm transition-shadow duration-300 hover:shadow-md md:p-8">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between lg:gap-12">
             <div className="max-w-md">
               <h3 className="text-lg font-semibold tracking-tight text-foreground">Run a custom image</h3>

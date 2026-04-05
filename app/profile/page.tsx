@@ -4,6 +4,8 @@ import { createClient } from '@/utils/supabase/server'
 import { updateProfile } from './actions'
 import { DeleteChallengeButton } from '@/components/profile/delete-challenge-button'
 import { DeleteAccountButton } from '@/components/profile/DeleteAccountButton'
+import { Button } from '@/components/ui/button'
+import { ArrowLeft } from 'lucide-react'
 
 export default async function ProfilePage() {
   const supabase = await createClient()
@@ -20,13 +22,15 @@ export default async function ProfilePage() {
     .eq('id', user.id)
     .single()
 
-  const { data: myChallenges } = await supabase
+  const { data: myPosts } = await supabase
     .from('posts')
-    .select('id, title, difficulty, created_at')
+    .select('id, title, difficulty, created_at, is_draft')
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
 
-  const challenges = myChallenges ?? []
+  const posts = myPosts ?? []
+  const publishedChallenges = posts.filter(p => !p.is_draft)
+  const draftChallenges = posts.filter(p => p.is_draft)
 
   const inputClass =
     'w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
@@ -34,9 +38,18 @@ export default async function ProfilePage() {
   return (
     <div className="min-h-screen bg-background pb-12">
       <div className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6 sm:py-10">
-        <Link href="/" className="mb-6 inline-block text-sm text-muted-foreground hover:text-foreground">
-          ← Return Home
-        </Link>
+        <div className="mb-8">
+          <Link href="/">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="-ml-3 gap-2 text-muted-foreground hover:text-foreground"
+            >
+              <ArrowLeft className="size-4" />
+              Back
+            </Button>
+          </Link>
+        </div>
 
         <div className="mb-10 flex flex-col gap-2">
           <h1 className="text-3xl font-bold tracking-tight text-foreground">Your Profile</h1>
@@ -127,23 +140,55 @@ export default async function ProfilePage() {
             </div>
           </div>
 
+          {draftChallenges.length > 0 && (
+            <section className="rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
+                <h2 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">Draft workspaces</h2>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                In-progress environments. Only you can see and edit these until published.
+              </p>
+
+              <ul className="mt-6 divide-y divide-border">
+                {draftChallenges.map((post) => (
+                  <li key={post.id} className="flex flex-wrap items-center gap-3 py-4 first:pt-0">
+                    <div className="min-w-0 flex-1">
+                      <Link
+                        href={`/studio/${post.id}`}
+                        className="font-medium text-foreground hover:text-primary hover:underline flex items-center gap-2"
+                      >
+                        {post.title}
+                        <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded border border-border bg-muted/50 text-muted-foreground">Studio</span>
+                      </Link>
+                      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                        <span>Created {new Date(post.created_at).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                    <DeleteChallengeButton postId={post.id} title={post.title} />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
           <section className="rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8">
             <h2 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">Published challenges</h2>
             <p className="mt-2 text-sm text-muted-foreground">
               Challenges you have published. Deleting removes them for everyone.
             </p>
 
-            {challenges.length === 0 ? (
+            {publishedChallenges.length === 0 ? (
               <p className="mt-6 rounded-xl border border-dashed border-border bg-muted/30 px-4 py-8 text-center text-sm text-muted-foreground">
                 You haven&apos;t published any challenges yet.{' '}
-                <Link href="/" className="font-medium text-primary hover:underline">
-                  Create one from the home page
+                <Link href="/new" className="font-medium text-primary hover:underline">
+                  Create one now
                 </Link>
                 .
               </p>
             ) : (
               <ul className="mt-6 divide-y divide-border">
-                {challenges.map((post) => {
+                {publishedChallenges.map((post) => {
                   const diff = post.difficulty || 'medium'
                   return (
                     <li key={post.id} className="flex flex-wrap items-center gap-3 py-4 first:pt-0">
