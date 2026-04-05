@@ -59,14 +59,14 @@ export default async function Home() {
           {user ? (
             <Link
               href="/new"
-              className="inline-flex h-11 w-full items-center justify-center rounded-full border border-primary/45 bg-black/35 px-6 text-sm font-semibold text-primary shadow-[inset_0_1px_0_0_rgba(255,255,255,0.12)] backdrop-blur-md transition-colors hover:border-primary/55 hover:bg-black/48 dark:border-primary/40 dark:bg-neutral-950/55 dark:text-primary dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)] dark:hover:bg-neutral-950/68 dark:hover:border-primary/50 sm:w-auto"
+              className="inline-flex h-11 w-full items-center justify-center rounded-full border border-border bg-card px-6 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-muted sm:w-auto"
             >
               Create challenge
             </Link>
           ) : (
             <Link
               href="/login"
-              className="inline-flex h-11 w-full items-center justify-center rounded-full border border-primary/40 bg-primary/5 px-6 text-sm font-semibold text-primary transition-colors hover:bg-primary/10 sm:w-auto"
+              className="inline-flex h-11 w-full items-center justify-center rounded-full border border-border bg-card px-6 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-muted sm:w-auto"
             >
               Sign in to create
             </Link>
@@ -121,14 +121,24 @@ export default async function Home() {
 
           <div className="flex flex-col gap-5">
             {list.length > 0 ? (
-              list.map((container) => (
-                <ChallengeFeedCard
-                  key={container.id}
-                  container={container}
-                  userId={user?.id}
-                  hasSession={activeSessions.has(container.id)}
-                />
-              ))
+              <>
+                {list.map((container) => (
+                  <ChallengeFeedCard
+                    key={container.id}
+                    container={container}
+                    userId={user?.id}
+                    hasSession={activeSessions.has(container.id)}
+                  />
+                ))}
+                <div className="mt-8 flex justify-center">
+                  <Link
+                    href="/library"
+                    className="inline-flex h-12 items-center justify-center rounded-full border border-border bg-card px-8 text-base font-semibold text-foreground shadow-sm transition-colors hover:bg-muted"
+                  >
+                    View all challenges
+                  </Link>
+                </div>
+              </>
             ) : (
               <div className="rounded-2xl border border-dashed border-border bg-muted/20 px-8 py-20 text-center">
                 <p className="text-base font-medium text-foreground">No highly-rated challenges yet</p>
