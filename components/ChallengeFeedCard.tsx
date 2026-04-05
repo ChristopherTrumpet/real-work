@@ -25,10 +25,12 @@ export function ChallengeFeedCard({
   container,
   userId,
   hasSession,
+  size = 'md'
 }: {
   container: ChallengeFeedItem
   userId: string | undefined
   hasSession: boolean
+  size?: 'lg' | 'md' | 'sm'
 }) {
   const diff = container.difficulty || 'medium'
   
@@ -38,11 +40,24 @@ export function ChallengeFeedCard({
     hard: 'text-rose-500 bg-rose-500/10 border-rose-500/20'
   }[diff as 'easy' | 'medium' | 'hard'] || 'text-amber-500 bg-amber-500/10 border-amber-500/20'
 
+  const isLg = size === 'lg'
+  const isMd = size === 'md'
+  const isSm = size === 'sm'
+
   return (
-    <article className="group relative overflow-hidden rounded-3xl border border-border bg-card/50 backdrop-blur-sm transition-all duration-300 hover:border-primary/30 hover:shadow-[0_0_2rem_-0.5rem_rgba(var(--primary),0.15)] sm:h-[220px]">
-      <div className="flex h-full flex-col p-5 sm:flex-row sm:gap-8">
+    <article className={cn(
+      "group relative overflow-hidden rounded-3xl border border-border bg-card/50 backdrop-blur-sm transition-all duration-300 hover:border-primary/30 hover:shadow-[0_0_2rem_-0.5rem_rgba(var(--primary),0.15)]",
+      isLg ? "sm:h-[260px]" : "flex flex-col h-full"
+    )}>
+      <div className={cn(
+        "flex h-full flex-col",
+        isLg ? "sm:flex-row sm:gap-8 sm:p-7 p-5" : (isSm || isMd ? "p-4" : "p-5")
+      )}>
         {/* Visual Preview */}
-        <div className="relative aspect-video w-full shrink-0 overflow-hidden rounded-2xl bg-muted sm:h-full sm:w-64">
+        <div className={cn(
+          "relative shrink-0 overflow-hidden rounded-2xl bg-muted",
+          isLg ? "aspect-video w-full sm:h-full sm:w-80" : (isMd ? "aspect-[2.4/1] w-full mb-3" : "aspect-video w-full mb-4")
+        )}>
           {container.thumbnail_url ? (
             <img
               src={container.thumbnail_url}
@@ -71,19 +86,27 @@ export function ChallengeFeedCard({
             <div className="space-y-1">
               <Link
                 href={`/challenge/${container.id}`}
-                className="inline-flex max-w-full items-center gap-2 text-xl font-bold tracking-tight text-foreground transition-all hover:text-primary group/title"
+                className={cn(
+                  "inline-flex max-w-full items-center gap-2 font-bold tracking-tight text-foreground transition-all hover:text-primary group/title",
+                  isLg ? "text-2xl" : (isSm ? "text-lg" : "text-xl")
+                )}
               >
                 <span className="truncate">{container.title}</span>
                 <ArrowUpRight className="size-4 shrink-0 opacity-0 -translate-y-1 translate-x-1 transition-all group-hover/title:opacity-100 group-hover/title:translate-y-0 group-hover/title:translate-x-0" />
               </Link>
               
-              <p className="min-h-[1.25rem] max-w-2xl text-sm font-medium leading-relaxed text-muted-foreground line-clamp-1">
-                {container.description || "\u00A0"}
-              </p>
+              {!isSm && (
+                <p className={cn(
+                  "min-h-[1.25rem] max-w-2xl text-sm font-medium leading-relaxed text-muted-foreground",
+                  isLg ? "line-clamp-2" : (isMd ? "line-clamp-1" : "line-clamp-2")
+                )}>
+                  {container.description || "\u00A0"}
+                </p>
+              )}
             </div>
 
             <div className="flex flex-wrap gap-2 overflow-hidden h-6">
-              {container.tags && container.tags.slice(0, 3).map((tag: string, i: number) => (
+              {container.tags && container.tags.slice(0, isSm ? 2 : 3).map((tag: string, i: number) => (
                 <span
                   key={i}
                   className="rounded-full bg-muted/50 px-3 py-0.5 text-[10px] font-semibold text-muted-foreground/80 transition-colors hover:bg-primary/10 hover:text-primary"
@@ -91,28 +114,26 @@ export function ChallengeFeedCard({
                   #{tag}
                 </span>
               ))}
-              {container.tags && container.tags.length > 3 && (
-                <span className="text-[10px] font-semibold text-muted-foreground/40 self-center">
-                  +{container.tags.length - 3} more
-                </span>
-              )}
             </div>
 
             <div className="flex flex-wrap items-center gap-5 text-xs font-semibold text-muted-foreground/60">
               <span className="inline-flex items-center gap-1.5">
                 <Star className="size-3.5 text-amber-500 fill-amber-500" />
                 <span className="text-foreground">{container.average_rating != null ? Number(container.average_rating).toFixed(1) : '—'}</span>
-                <span>({container.ratings_count ?? 0})</span>
+                {!isSm && <span>({container.ratings_count ?? 0})</span>}
               </span>
               <span className="inline-flex items-center gap-1.5">
                 <CheckCircle2 className="size-3.5 text-primary/80" />
                 <span className="text-foreground">{(container.number_of_completions ?? 0).toLocaleString()}</span>
-                <span>completions</span>
+                {!isSm && <span>completions</span>}
               </span>
             </div>
           </div>
 
-          <div className="mt-4 flex items-center justify-between gap-4 border-t border-border/50 pt-4">
+          <div className={cn(
+            "mt-4 flex items-center justify-between gap-4 border-t border-border/50 pt-4",
+            !isLg ? "flex-col sm:flex-row items-stretch sm:items-center" : "flex-row"
+          )}>
             <div className="flex items-center gap-3">
               {container.profiles?.username ? (
                 <Link
@@ -132,7 +153,7 @@ export function ChallengeFeedCard({
                     <span className="truncate text-xs font-bold text-foreground">
                       {container.profiles?.full_name || container.profiles.username}
                     </span>
-                    <span className="text-[10px] text-muted-foreground/60">@{container.profiles.username}</span>
+                    {!isSm && <span className="text-[10px] text-muted-foreground/60">@{container.profiles.username}</span>}
                   </div>
                 </Link>
               ) : (
@@ -145,7 +166,10 @@ export function ChallengeFeedCard({
               )}
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className={cn(
+              "flex items-center gap-2",
+              !isLg && "justify-end mt-2 sm:mt-0"
+            )}>
               {hasSession ? (
                 <div className="flex items-center gap-2">
                   <form action={deployContainer}>
@@ -157,10 +181,10 @@ export function ChallengeFeedCard({
                       type="submit"
                       className="inline-flex h-9 cursor-pointer items-center justify-center rounded-full bg-primary px-5 text-xs font-bold text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:scale-[1.02] active:scale-95"
                     >
-                      Resume Work
+                      Resume
                     </button>
                   </form>
-                  {userId && (
+                  {userId && !isSm && (
                     <ResetProgressButton 
                       postId={container.id} 
                       userId={userId} 

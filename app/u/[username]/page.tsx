@@ -29,6 +29,7 @@ export default async function PublicProfilePage({ params }: PageProps) {
     .from('posts')
     .select('id, title, description, difficulty, tags, number_of_completions, average_rating, ratings_count, created_at, user_id')
     .eq('user_id', profile.id)
+    .eq('is_draft', false)
     .order('created_at', { ascending: false })
     .range(0, 9) // Fetch first PAGE_SIZE (10)
 
@@ -37,6 +38,7 @@ export default async function PublicProfilePage({ params }: PageProps) {
     .from('posts')
     .select('created_at')
     .eq('user_id', profile.id)
+    .eq('is_draft', false)
 
   // Fetch completions for activity
   const { data: completions } = await supabase

@@ -75,6 +75,7 @@ export default function LibraryClient({ initialUserId }: { initialUserId?: strin
     let query = supabase
       .from('posts')
       .select('*, profiles!user_id(username, full_name, avatar_url)')
+      .eq('is_draft', false)
 
     const term = filters.q.trim()
     if (term) {
