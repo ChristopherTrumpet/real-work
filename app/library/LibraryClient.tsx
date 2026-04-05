@@ -24,7 +24,7 @@ export default function LibraryClient({ initialUserId }: { initialUserId?: strin
 
     const { data, error } = await supabase
       .from('posts')
-      .select('*, profiles!user_id(username, full_name)')
+      .select('*, profiles!user_id(username, full_name, avatar_url)')
       .order('created_at', { ascending: false })
       .range(from, to)
 

@@ -97,7 +97,8 @@ export default function PreviewWorkspace({
   const handleBackToDashboard = async () => {
     if (port) {
       setIsLeaving(true)
-      await killContainer(parseInt(port))
+      const saveContext = (post?.id && currentUserId) ? { userId: currentUserId, postId: post.id } : undefined
+      await killContainer(parseInt(port), saveContext)
     }
     router.push('/')
   }

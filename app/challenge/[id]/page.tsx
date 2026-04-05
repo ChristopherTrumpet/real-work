@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { createClient } from '@/utils/supabase/server'
 import { deployContainer } from '@/app/actions/docker'
 import { CommentThread } from '@/components/CommentThread'
+import { ResetProgressButton } from '@/components/ResetProgressButton'
 import { ReadOnlyStarRating, ratingRowsToBreakdown } from '@/components/read-only-star-rating'
 import fs from 'fs'
 import path from 'path'
@@ -18,7 +19,7 @@ export default async function ChallengePage({ params }: PageProps) {
 
   const { data: post, error } = await supabase
     .from('posts')
-    .select('*, profiles!user_id(username, full_name)')
+    .select('*, profiles!user_id(username, full_name, avatar_url)')
     .eq('id', id)
     .maybeSingle()
 
@@ -28,7 +29,7 @@ export default async function ChallengePage({ params }: PageProps) {
 
   const { data: rawComments } = await supabase
     .from('post_comments')
-    .select('id, user_id, parent_id, body, created_at, profiles!user_id(username, full_name)')
+    .select('id, user_id, parent_id, body, created_at, profiles!user_id(username, full_name, avatar_url)')
     .eq('post_id', id)
     .order('created_at', { ascending: true })
 
@@ -42,7 +43,7 @@ export default async function ChallengePage({ params }: PageProps) {
         parent_id: row.parent_id as string | null,
         body: row.body,
         created_at: row.created_at,
-        profiles: profileRow as { username: string | null; full_name: string | null } | null,
+        profiles: profileRow as { username: string | null; full_name: string | null; avatar_url: string | null } | null,
       }
     }) ?? []
 
@@ -64,198 +65,210 @@ export default async function ChallengePage({ params }: PageProps) {
   const { data: ratingRows } = await supabase.from('post_ratings').select('rating').eq('post_id', id)
   const ratingBreakdown = ratingRowsToBreakdown(ratingRows ?? [])
 
-  const author = post.profiles as { username: string | null; full_name: string | null } | null
+  const author = post.profiles as { username: string | null; full_name: string | null; avatar_url: string | null } | null
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-      <Link href="/" className="mb-6 inline-block text-sm text-muted-foreground hover:text-foreground">
-        ← Back to feed
-      </Link>
+    <div className="min-h-screen bg-background pb-12">
+      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+        <Link href="/" className="mb-6 inline-block text-sm text-muted-foreground hover:text-foreground">
+          ← Return Home
+        </Link>
 
-      <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:gap-10">
-        <div className="flex min-w-0 flex-1 flex-col gap-8">
-          <article className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-            {post.thumbnail_url && (
-              <div className="aspect-video w-full border-b border-border bg-muted">
-                <img
-                  src={post.thumbnail_url}
-                  alt={post.title}
-                  className="h-full w-full object-cover"
-                />
-              </div>
-            )}
-            <div className="p-6 sm:p-8">
-              <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <h1 className="text-2xl font-bold text-foreground">{post.title}</h1>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  by{' '}
-                  {author?.username ? (
-                    <Link
-                      href={`/u/${encodeURIComponent(author.username)}`}
-                      className="font-medium text-primary hover:underline"
-                    >
-                      {author.full_name || author.username}
-                    </Link>
-                  ) : (
-                    <span>{author?.full_name || 'Unknown'}</span>
-                  )}
-                </p>
-              </div>
-              <span
-                className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-wider ${
-                  post.difficulty === 'easy'
-                    ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400'
-                    : post.difficulty === 'hard'
-                      ? 'bg-rose-500/15 text-rose-700 dark:text-rose-400'
-                      : 'bg-amber-500/15 text-amber-800 dark:text-amber-300'
-                }`}
-              >
-                {post.difficulty || 'medium'}
-              </span>
-            </div>
-
-            {post.description && <p className="mt-4 text-foreground/90 whitespace-pre-wrap">{post.description}</p>}
-
-            {post.tags && post.tags.length > 0 && (
-              <div className="mt-4 flex flex-wrap gap-1.5">
-                {post.tags.map((tag: string, i: number) => (
-                  <span key={i} className="rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                    #{tag}
-                  </span>
-                ))}
-              </div>
-            )}
-
-            <div className="mt-6 flex flex-wrap gap-4 text-sm text-muted-foreground">
-              <span>{post.number_of_completions ?? 0} solves</span>
-              {post.content_url && (
-                <code className="rounded bg-muted px-2 py-0.5 text-xs">{post.content_url}</code>
-              )}
-            </div>
-
-            {user && (
-              <div className="mt-8 flex flex-wrap gap-2">
-                {hasSession ? (
-                  <>
-                    <form action={deployContainer}>
-                      <input type="hidden" name="image" value={post.content_url ?? ''} />
-                      <input type="hidden" name="postId" value={post.id} />
-                      <input type="hidden" name="userId" value={user.id} />
-                      <input type="hidden" name="actionType" value="resume" />
-                      <button
-                        type="submit"
-                        className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
-                      >
-                        Resume
-                      </button>
-                    </form>
-                    <form action={deployContainer}>
-                      <input type="hidden" name="image" value={post.content_url ?? ''} />
-                      <input type="hidden" name="postId" value={post.id} />
-                      <input type="hidden" name="userId" value={user.id} />
-                      <input type="hidden" name="actionType" value="restart" />
-                      <button
-                        type="submit"
-                        className="rounded-lg bg-destructive/90 px-4 py-2 text-sm font-semibold text-destructive-foreground hover:bg-destructive"
-                      >
-                        Reclone
-                      </button>
-                    </form>
-                  </>
-                ) : (
-                  <form action={deployContainer}>
-                    <input type="hidden" name="image" value={post.content_url ?? ''} />
-                    <input type="hidden" name="postId" value={post.id} />
-                    <input type="hidden" name="userId" value={user.id} />
-                    <input type="hidden" name="actionType" value="launch" />
-                    <button
-                      type="submit"
-                      className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
-                    >
-                      Launch challenge
-                    </button>
-                  </form>
-                  )}
-                  </div>
-                  )}
-                  </div>
-                  </article>
-          <section className="rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8">
-            <CommentThread
-              postId={post.id}
-              flatComments={flatComments}
-              currentUserId={user?.id ?? null}
-              readOnly={!canDiscuss}
-              title="Discussion"
-              embedded
-            />
-          </section>
-        </div>
-
-        <aside className="w-full shrink-0 lg:sticky lg:top-20 lg:w-[min(100%,380px)] lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-            <ReadOnlyStarRating
-              averageRating={post.average_rating}
-              ratingsCount={post.ratings_count}
-              countsByStar={ratingBreakdown}
-              className="border-b border-border pb-5"
-            />
-            <p className="mt-4 text-xs text-muted-foreground">
-              Star ratings are submitted on the completion page after you finish. Solvers can discuss in the section
-              below the challenge.
-            </p>
-          </div>
-
-          <div className="mt-6 rounded-2xl border border-border bg-card p-5 shadow-sm">
-            <h3 className="mb-4 text-xs font-bold uppercase tracking-widest text-muted-foreground">Challenge Info</h3>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Difficulty</span>
-                <span className={`font-semibold capitalize ${
-                  post.difficulty === 'easy' ? 'text-emerald-500' : 
-                  post.difficulty === 'hard' ? 'text-rose-500' : 'text-amber-500'
-                }`}>
-                  {post.difficulty || 'medium'}
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Language</span>
-                <span className="font-medium text-foreground capitalize">{post.benchmark_language || 'Any'}</span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Added</span>
-                <span className="font-medium text-foreground">
-                  {new Date(post.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Total Solves</span>
-                <span className="font-medium text-foreground">{post.number_of_completions ?? 0}</span>
-              </div>
-              {post.benchmark_timeout_ms && (
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Timeout</span>
-                  <span className="font-medium text-foreground">{(post.benchmark_timeout_ms / 1000).toFixed(1)}s</span>
+        <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:gap-10">
+          <div className="flex min-w-0 flex-1 flex-col gap-8">
+            <article className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+              {post.thumbnail_url && (
+                <div className="aspect-video w-full border-b border-border bg-muted">
+                  <img
+                    src={post.thumbnail_url}
+                    alt={post.title}
+                    className="h-full w-full object-cover"
+                  />
                 </div>
               )}
-              
-              {post.tags && post.tags.length > 0 && (
-                <div className="border-t border-border pt-4">
-                  <span className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Tags</span>
-                  <div className="flex flex-wrap gap-1.5">
+              <div className="p-6 sm:p-8">
+                <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <h1 className="text-2xl font-bold text-foreground md:text-3xl">{post.title}</h1>
+                    <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
+                      <span>by</span>
+                      {author?.username ? (
+                        <Link 
+                          href={`/u/${encodeURIComponent(author.username)}`}
+                          className="group/author flex items-center gap-2"
+                        >
+                          <div className="flex size-7 items-center justify-center overflow-hidden rounded-full bg-muted text-[10px] font-semibold text-muted-foreground transition-colors group-hover/author:bg-primary/10 group-hover/author:text-primary">
+                            {author.avatar_url ? (
+                              <img src={author.avatar_url} alt={author.username} className="h-full w-full object-cover" />
+                            ) : (
+                              (author.username[0] || 'U').toUpperCase()
+                            )}
+                          </div>
+                          <span className="font-medium text-primary hover:underline transition-colors group-hover/author:text-primary/80">
+                            {author.full_name || author.username}
+                          </span>
+                        </Link>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-semibold text-muted-foreground">
+                            U
+                          </div>
+                          <span className="font-medium text-foreground">
+                            {author?.full_name || 'Unknown'}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <span
+                    className={`shrink-0 rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-wider ${
+                      post.difficulty === 'easy'
+                        ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                        : post.difficulty === 'hard'
+                          ? 'border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-400'
+                          : 'border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-300'
+                    }`}
+                  >
+                    {post.difficulty || 'medium'}
+                  </span>
+                </div>
+
+                {post.description && <p className="mt-6 text-base leading-relaxed text-foreground/90 whitespace-pre-wrap">{post.description}</p>}
+
+                {post.tags && post.tags.length > 0 && (
+                  <div className="mt-6 flex flex-wrap gap-1.5">
                     {post.tags.map((tag: string, i: number) => (
-                      <span key={i} className="rounded-md bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted/80">
-                        {tag}
+                      <span key={i} className="rounded-md border border-border bg-muted/50 px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                        #{tag}
                       </span>
                     ))}
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+
+                {user && (
+                  <div className="mt-8 flex flex-wrap items-center gap-3 border-t border-border pt-8">
+                    {hasSession ? (
+                      <>
+                        <form action={deployContainer} className="min-w-[8rem]">
+                          <input type="hidden" name="image" value={post.content_url ?? ''} />
+                          <input type="hidden" name="postId" value={post.id} />
+                          <input type="hidden" name="userId" value={user.id} />
+                          <input type="hidden" name="actionType" value="resume" />
+                          <button
+                            type="submit"
+                            className="w-full cursor-pointer rounded-lg bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+                          >
+                            Resume Workspace
+                          </button>
+                          </form>
+                          <ResetProgressButton 
+                          postId={post.id} 
+                          userId={user.id} 
+                          className="w-full cursor-pointer rounded-lg border border-border bg-transparent px-6 py-2.5 text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted"
+                          />
+                          </>
+                          ) : (                      <form action={deployContainer} className="min-w-[10rem]">
+                        <input type="hidden" name="image" value={post.content_url ?? ''} />
+                        <input type="hidden" name="postId" value={post.id} />
+                        <input type="hidden" name="userId" value={user.id} />
+                        <input type="hidden" name="actionType" value="launch" />
+                        <button
+                          type="submit"
+                          className="w-full cursor-pointer rounded-lg bg-primary px-8 py-3 text-base font-bold text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:scale-[1.02] active:scale-[0.98]"
+                        >
+                          Launch Challenge
+                        </button>
+                      </form>
+                    )}
+                    <div className="ml-auto flex items-center gap-4 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <span className="font-semibold text-foreground">{post.number_of_completions ?? 0}</span> solves
+                      </span>
+                      {post.content_url && (
+                        <code className="hidden rounded bg-muted/80 px-2 py-1 font-mono sm:block">{post.content_url}</code>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </article>
+
+            <section className="rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8">
+              <CommentThread
+                postId={post.id}
+                flatComments={flatComments}
+                currentUserId={user?.id ?? null}
+                readOnly={!canDiscuss}
+                title="Discussion"
+                embedded
+              />
+            </section>
           </div>
-        </aside>
-      </div>
-    </main>
+
+          <aside className="w-full shrink-0 lg:sticky lg:top-20 lg:w-[min(100%,380px)] lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
+            <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+              <ReadOnlyStarRating
+                averageRating={post.average_rating}
+                ratingsCount={post.ratings_count}
+                countsByStar={ratingBreakdown}
+                className="border-b border-border pb-5"
+              />
+              <p className="mt-4 text-xs text-muted-foreground">
+                Star ratings are submitted on the completion page after you finish. Solvers can discuss in the section
+                below the challenge.
+              </p>
+            </div>
+
+            <div className="mt-6 rounded-2xl border border-border bg-card p-5 shadow-sm">
+              <h3 className="mb-4 text-xs font-bold uppercase tracking-widest text-muted-foreground">Challenge Info</h3>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Difficulty</span>
+                  <span className={`font-semibold capitalize ${
+                    post.difficulty === 'easy' ? 'text-emerald-500' : 
+                    post.difficulty === 'hard' ? 'text-rose-500' : 'text-amber-500'
+                  }`}>
+                    {post.difficulty || 'medium'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Language</span>
+                  <span className="font-medium text-foreground capitalize">{post.benchmark_language || 'Any'}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Added</span>
+                  <span className="font-medium text-foreground">
+                    {new Date(post.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Total Solves</span>
+                  <span className="font-medium text-foreground">{post.number_of_completions ?? 0}</span>
+                </div>
+                {post.benchmark_timeout_ms && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Timeout</span>
+                    <span className="font-medium text-foreground">{(post.benchmark_timeout_ms / 1000).toFixed(1)}s</span>
+                  </div>
+                )}
+                
+                {post.tags && post.tags.length > 0 && (
+                  <div className="border-t border-border pt-4">
+                    <span className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Tags</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {post.tags.map((tag: string, i: number) => (
+                        <span key={i} className="rounded-md bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted/80">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </aside>
+        </div>
+      </main>
+    </div>
   )
 }

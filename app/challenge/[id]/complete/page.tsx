@@ -48,7 +48,7 @@ export default async function ChallengeCompletePage({ params }: PageProps) {
   return (
     <main className="mx-auto max-w-2xl px-4 py-10 sm:px-6">
       <Link href="/" className="text-sm text-muted-foreground hover:text-foreground">
-        ← Back to feed
+        ← Return Home
       </Link>
       <Link href={`/challenge/${id}`} className="ml-4 text-sm text-muted-foreground hover:text-foreground">
         Challenge page

@@ -11,7 +11,8 @@ import {
   CheckCircle2, 
   AlertCircle,
   ExternalLink,
-  Terminal
+  Terminal,
+  Cloud
 } from 'lucide-react'
 import { Button } from './ui/button'
 import { cn } from '@/lib/utils'
@@ -35,10 +36,11 @@ export function BuildToaster() {
     }
   }, [activeBuild?.logs.length, isExpanded])
 
-  if (!activeBuild) return null
+  // Hide toaster for draft builds - draft page has its own loading state
+  if (!activeBuild || activeBuild.id.startsWith('draft')) return null
 
   const { status, logs, result } = activeBuild
-  const isPushing = logs.some(l => l.message.includes('Pushing image to cloud registry'))
+  const isPushing = logs.some(l => l.message.includes('Pushing image to cloud registry') || l.message.includes('Tagging and pushing'))
   const lastLog = logs[logs.length - 1]
 
   const formatDuration = (seconds: number) => {
@@ -48,23 +50,35 @@ export function BuildToaster() {
     return `${mins}m ${secs}s`
   }
 
+  const handleLaunch = () => {
+    if (result?.postId) {
+      router.push(`/challenge/${result.postId}`)
+    } else {
+      router.push('/')
+    }
+    dismissBuild()
+  }
+
   return (
     <div className={cn(
-      "fixed bottom-6 right-6 z-[100] w-full max-w-md bg-background border border-border rounded-2xl shadow-2xl transition-all duration-300 transform",
-      isExpanded ? "translate-y-0" : "translate-y-0"
+      "fixed bottom-6 right-6 z-[100] w-full max-w-md bg-background border border-border rounded-xl shadow-2xl transition-all duration-300 transform animate-in slide-in-from-right-4",
+      isExpanded ? "h-auto" : ""
     )}>
       {/* Header */}
-      <div className="p-4 flex items-center justify-between border-b border-border bg-muted/5 rounded-t-2xl">
+      <div className="p-4 flex items-center justify-between border-b border-border bg-muted/5 rounded-t-xl">
         <div className="flex items-center gap-3">
           {status === 'building' && <Loader2 className="size-5 text-primary animate-spin" />}
           {status === 'ready' && <CheckCircle2 className="size-5 text-green-500" />}
           {status === 'error' && <AlertCircle className="size-5 text-red-500" />}
           <div className="flex flex-col">
             <span className="text-sm font-bold leading-none flex items-center gap-2">
-              {status === 'building' ? 'Deploying Challenge' : 
-               status === 'ready' ? 'Deployment Ready' : 'Deployment Failed'}
+              {status === 'building' ? 'Publishing Challenge' : 
+               status === 'ready' ? 'Challenge Published' : 'Publishing Failed'}
               {isPushing && status === 'building' && (
-                <span className="bg-blue-500/10 text-blue-500 text-[8px] px-1.5 py-0.5 rounded-full animate-pulse border border-blue-500/20">CLOUD SYNC</span>
+                <span className="bg-blue-500/10 text-blue-500 text-[8px] px-1.5 py-0.5 rounded-full animate-pulse border border-blue-500/20 flex items-center gap-1">
+                  <Cloud className="size-2" />
+                  CLOUD SYNC
+                </span>
               )}
             </span>
             <span className="text-[10px] text-muted-foreground mt-1 uppercase tracking-wider font-mono">
@@ -88,20 +102,15 @@ export function BuildToaster() {
         </div>
       </div>
 
-      {/* Main Content (Success/Action) */}
+      {/* Action Button (Collapsed Success State) */}
       {status === 'ready' && !isExpanded && (
         <div className="p-4 bg-green-500/5 animate-in fade-in zoom-in-95">
           <Button 
-            className="w-full h-10 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl shadow-lg shadow-green-500/20"
-            onClick={() => {
-              router.push(
-                `/studio?port=${encodeURIComponent(String(result.port))}&containerId=${encodeURIComponent(String(result.containerId))}&postId=${encodeURIComponent(String(result.postId))}`
-              )
-              dismissBuild()
-            }}
+            className="w-full h-10 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg shadow-lg shadow-green-500/20"
+            onClick={handleLaunch}
           >
             <ExternalLink className="mr-2 size-4" />
-            Open studio workspace
+            View Public Challenge
           </Button>
         </div>
       )}
@@ -109,10 +118,10 @@ export function BuildToaster() {
       {/* Logs View */}
       {isExpanded && (
         <div className="flex flex-col h-[400px] animate-in slide-in-from-bottom-2 duration-300">
-          <div className="flex-1 overflow-y-auto p-4 font-mono text-[10px] bg-black/95 text-green-500 space-y-1.5 scrollbar-hide">
+          <div className="flex-1 overflow-y-auto p-4 font-mono text-[10px] bg-black text-green-500 space-y-1.5 scrollbar-hide text-left">
             <div className="flex items-center gap-2 mb-4 text-zinc-500 border-b border-zinc-800 pb-2">
               <Terminal className="size-3" />
-              <span>LIVE_BUILD_CONSOLE</span>
+              <span>LIVE_PUBLISH_CONSOLE</span>
             </div>
             {logs.map((log, i) => {
               const isLast = i === logs.length - 1
@@ -133,9 +142,9 @@ export function BuildToaster() {
             })}
             <div ref={logEndRef} />
             {status === 'building' && (
-              <div className="flex gap-2 items-center text-zinc-600 animate-pulse mt-2">
+              <div className="flex gap-2 items-center text-zinc-600 animate-pulse mt-2 text-left">
                 <span className="w-1 h-3 bg-zinc-600 animate-caret" />
-                <span>Executing next command...</span>
+                <span>Syncing changes to cloud...</span>
               </div>
             )}
           </div>
@@ -143,24 +152,19 @@ export function BuildToaster() {
           {status === 'ready' && (
             <div className="p-4 border-t border-border bg-muted/10">
               <Button 
-                className="w-full h-11 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl shadow-lg shadow-green-500/20"
-                onClick={() => {
-                  router.push(
-                `/studio?port=${encodeURIComponent(String(result.port))}&containerId=${encodeURIComponent(String(result.containerId))}&postId=${encodeURIComponent(String(result.postId))}`
-              )
-                  dismissBuild()
-                }}
+                className="w-full h-11 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg shadow-lg shadow-green-500/20"
+                onClick={handleLaunch}
               >
-                Open studio workspace
+                Launch Public Challenge Page
               </Button>
             </div>
           )}
         </div>
       )}
 
-      {/* Collapsed Progress Bar */}
+      {/* Progress Bar */}
       {status === 'building' && !isExpanded && (
-        <div className="h-1 bg-muted overflow-hidden rounded-b-2xl">
+        <div className="h-1 bg-muted overflow-hidden rounded-b-xl">
           <div className="h-full bg-primary animate-progress-indeterminate" style={{ width: '100%' }} />
         </div>
       )}

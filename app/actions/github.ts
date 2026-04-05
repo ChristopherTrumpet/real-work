@@ -35,12 +35,44 @@ export async function fetchGitHubRepos(usernameOrUrl?: string) {
       headers: providerToken ? { Authorization: `Bearer ${providerToken}` } : {}
     })
     if (res.ok) repos = await res.json()
-  } else if (providerToken) {
-    // Fetch authenticated user's repos
-    const res = await fetch('https://api.github.com/user/repos?sort=updated&per_page=100', {
-      headers: { Authorization: `Bearer ${providerToken}` }
-    })
-    if (res.ok) repos = await res.json()
+  } else {
+    // Attempt to fetch using provider token first (includes private repos)
+    if (providerToken) {
+      const res = await fetch('https://api.github.com/user/repos?sort=updated&per_page=100', {
+        headers: { Authorization: `Bearer ${providerToken}` }
+      })
+      if (res.ok) repos = await res.json()
+    }
+    
+    // Fallback: use GitHub username from metadata if token is missing/expired
+    if (repos.length === 0) {
+      const ghUsername = user.user_metadata?.user_name || user.user_metadata?.preferred_username || user.user_metadata?.full_name?.split(' ').join('')
+      if (ghUsername) {
+        console.log(`Attempting public repo fetch for user: ${ghUsername}`)
+        try {
+          const res = await fetch(`https://api.github.com/users/${ghUsername}/repos?sort=updated&per_page=100`)
+          if (res.ok) {
+            repos = await res.json()
+          } else {
+            const errorData = await res.json()
+            console.error('GitHub API error during fallback:', errorData)
+          }
+        } catch (fetchError) {
+          console.error('Network error during GitHub fallback:', fetchError)
+        }
+      } else {
+        console.warn('Could not determine GitHub username from user metadata.')
+      }
+    }
+  }
+
+  if (!Array.isArray(repos)) {
+    console.error('GitHub API returned non-array response:', repos)
+    return []
+  }
+
+  if (repos.length === 0) {
+    console.warn('No repositories found for this account.')
   }
 
   return repos.map((r: any) => ({
