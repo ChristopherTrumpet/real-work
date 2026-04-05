@@ -37,7 +37,7 @@ export function ChallengeFeedCard({
         : 'border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-300'
 
   return (
-    <article className="group relative overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-all duration-200 hover:border-primary/25 hover:shadow-md">
+    <article className="group relative overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-md motion-reduce:hover:translate-y-0">
       <div className="flex flex-col gap-6 p-5 sm:flex-row sm:p-6">
         {container.thumbnail_url && (
           <div className="aspect-video w-full shrink-0 self-start overflow-hidden rounded-xl border border-border bg-muted sm:w-56 md:w-64">

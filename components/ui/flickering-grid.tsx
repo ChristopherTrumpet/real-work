@@ -20,7 +20,13 @@ interface FlickeringGridProps extends React.HTMLAttributes<HTMLDivElement> {
   height?: number
   className?: string
   maxOpacity?: number
+  /** Squares near the cursor flicker brighter and more often (respects prefers-reduced-motion). */
+  interactive?: boolean
+  /** Distance in CSS pixels over which mouse influence falls off. */
+  mouseInfluenceRadius?: number
 }
+
+type MousePos = { x: number; y: number }
 
 export const FlickeringGrid: React.FC<FlickeringGridProps> = ({
   squareSize = 4,
@@ -31,10 +37,14 @@ export const FlickeringGrid: React.FC<FlickeringGridProps> = ({
   height,
   className,
   maxOpacity = 0.3,
+  interactive = true,
+  mouseInfluenceRadius = 200,
   ...props
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const mouseRef = useRef<MousePos | null>(null)
+  const reducedMotionRef = useRef(false)
   /** Default true so the first paint animates; IO can pause when off-screen. */
   const [isInView, setIsInView] = useState(true)
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 })
@@ -50,6 +60,34 @@ export const FlickeringGrid: React.FC<FlickeringGridProps> = ({
     if (!el) return
     setResolvedPaintColor(getComputedStyle(el).color)
   }, [color])
+
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)")
+    reducedMotionRef.current = mq.matches
+    const onMq = () => {
+      reducedMotionRef.current = mq.matches
+    }
+    mq.addEventListener("change", onMq)
+    return () => mq.removeEventListener("change", onMq)
+  }, [])
+
+  useEffect(() => {
+    if (!interactive) return
+    const onMove = (e: MouseEvent) => {
+      const el = containerRef.current
+      if (!el) return
+      const r = el.getBoundingClientRect()
+      const x = e.clientX - r.left
+      const y = e.clientY - r.top
+      if (x < 0 || y < 0 || x > r.width || y > r.height) {
+        mouseRef.current = null
+        return
+      }
+      mouseRef.current = { x, y }
+    }
+    window.addEventListener("mousemove", onMove, { passive: true })
+    return () => window.removeEventListener("mousemove", onMove)
+  }, [interactive])
 
   const memoizedColor = useMemo(() => {
     const toRGBA = (c: string) => {
@@ -89,14 +127,35 @@ export const FlickeringGrid: React.FC<FlickeringGridProps> = ({
   )
 
   const updateSquares = useCallback(
-    (squares: Float32Array, deltaTime: number) => {
-      for (let i = 0; i < squares.length; i++) {
-        if (Math.random() < flickerChance * deltaTime) {
-          squares[i] = Math.random() * maxOpacity
+    (
+      squares: Float32Array,
+      deltaTime: number,
+      cols: number,
+      rows: number,
+      mouse: MousePos | null,
+      disableMouseFx: boolean
+    ) => {
+      const gap = squareSize + gridGap
+      for (let k = 0; k < squares.length; k++) {
+        const i = Math.floor(k / rows)
+        const j = k % rows
+        let near = 1
+        if (!disableMouseFx && mouse) {
+          const cx = i * gap + squareSize / 2
+          const cy = j * gap + squareSize / 2
+          const d = Math.hypot(mouse.x - cx, mouse.y - cy)
+          const t = Math.max(0, 1 - d / mouseInfluenceRadius)
+          near = 1 + t * t * 2.2
+        }
+        if (Math.random() < flickerChance * deltaTime * near) {
+          const cap = disableMouseFx
+            ? maxOpacity
+            : Math.min(0.95, maxOpacity * (0.55 + 0.45 * Math.min(near, 3)))
+          squares[k] = Math.random() * cap
         }
       }
     },
-    [flickerChance, maxOpacity]
+    [flickerChance, maxOpacity, squareSize, gridGap, mouseInfluenceRadius]
   )
 
   const drawGrid = useCallback(
@@ -107,26 +166,37 @@ export const FlickeringGrid: React.FC<FlickeringGridProps> = ({
       cols: number,
       rows: number,
       squares: Float32Array,
-      dpr: number
+      dpr: number,
+      mouse: MousePos | null,
+      disableMouseFx: boolean
     ) => {
       ctx.clearRect(0, 0, width, height)
       ctx.fillStyle = "transparent"
       ctx.fillRect(0, 0, width, height)
 
+      const gap = squareSize + gridGap
       for (let i = 0; i < cols; i++) {
         for (let j = 0; j < rows; j++) {
-          const opacity = squares[i * rows + j]
+          let opacity = squares[i * rows + j]
+          if (!disableMouseFx && mouse) {
+            const cx = i * gap + squareSize / 2
+            const cy = j * gap + squareSize / 2
+            const d = Math.hypot(mouse.x - cx, mouse.y - cy)
+            const t = Math.max(0, 1 - d / mouseInfluenceRadius)
+            const boost = t * t * 1.45
+            opacity = Math.min(0.98, opacity * (1 + boost))
+          }
           ctx.fillStyle = `${memoizedColor}${opacity})`
           ctx.fillRect(
-            i * (squareSize + gridGap) * dpr,
-            j * (squareSize + gridGap) * dpr,
+            i * gap * dpr,
+            j * gap * dpr,
             squareSize * dpr,
             squareSize * dpr
           )
         }
       }
     },
-    [memoizedColor, squareSize, gridGap]
+    [memoizedColor, squareSize, gridGap, mouseInfluenceRadius]
   )
 
   useEffect(() => {
@@ -141,6 +211,8 @@ export const FlickeringGrid: React.FC<FlickeringGridProps> = ({
     if (canvas && container && ctx) {
       const paint = () => {
         if (!gridParams) return
+        const noMouseFx = !interactive || reducedMotionRef.current
+        const mouse = noMouseFx ? null : mouseRef.current
         drawGrid(
           ctx,
           canvas.width,
@@ -148,7 +220,9 @@ export const FlickeringGrid: React.FC<FlickeringGridProps> = ({
           gridParams.cols,
           gridParams.rows,
           gridParams.squares,
-          gridParams.dpr
+          gridParams.dpr,
+          mouse,
+          noMouseFx
         )
       }
 
@@ -170,7 +244,16 @@ export const FlickeringGrid: React.FC<FlickeringGridProps> = ({
         lastTime = time
 
         if (deltaTime > 0) {
-          updateSquares(gridParams.squares, deltaTime)
+          const noMouseFx = !interactive || reducedMotionRef.current
+          const mouse = noMouseFx ? null : mouseRef.current
+          updateSquares(
+            gridParams.squares,
+            deltaTime,
+            gridParams.cols,
+            gridParams.rows,
+            mouse,
+            noMouseFx
+          )
         }
         paint()
         animationFrameId = requestAnimationFrame(animate)
@@ -205,7 +288,15 @@ export const FlickeringGrid: React.FC<FlickeringGridProps> = ({
         intersectionObserver.disconnect()
       }
     }
-  }, [setupCanvas, updateSquares, drawGrid, width, height, isInView])
+  }, [
+    setupCanvas,
+    updateSquares,
+    drawGrid,
+    width,
+    height,
+    isInView,
+    interactive,
+  ])
 
   return (
     <div

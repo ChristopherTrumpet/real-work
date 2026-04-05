@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import { createClient } from '@/utils/supabase/server'
 import { deployContainer } from './actions/docker'
-import { startStudioSession } from './actions/studio'
 import { ChallengeFeedCard, type ChallengeFeedItem } from '@/components/ChallengeFeedCard'
 import { HeroSection } from '@/components/home/HeroSection'
 import fs from 'fs'
@@ -46,27 +45,27 @@ export default async function Home() {
   return (
     <div className="min-h-screen bg-background">
       <HeroSection>
-        <p className="mx-auto mt-5 max-w-2xl text-center text-base leading-relaxed text-muted-foreground sm:mx-0 sm:text-left sm:text-lg">
-          Master modern engineering through hands-on challenges. Explore real-world scenarios, debug in isolated containers, and level up your skills with community-rated content.
+        <p className="mx-auto max-w-2xl text-center text-base leading-relaxed text-muted-foreground sm:mx-0 sm:text-left sm:text-lg">
+          Master modern engineering through hands-on challenges—debug in isolated containers, explore real scenarios, and learn from community-rated labs.
         </p>
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row sm:flex-wrap sm:justify-start">
           <Link
             href="/library"
-            className="inline-flex h-11 w-full items-center justify-center rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 sm:w-auto"
+            className="inline-flex h-11 w-full items-center justify-center rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-sm transition-all duration-200 hover:bg-primary/92 hover:shadow-md active:scale-[0.98] sm:w-auto"
           >
             Explore library
           </Link>
           {user ? (
             <Link
               href="/new"
-              className="inline-flex h-11 w-full items-center justify-center rounded-full border border-primary/45 bg-black/35 px-6 text-sm font-semibold text-primary shadow-[inset_0_1px_0_0_rgba(255,255,255,0.12)] backdrop-blur-md transition-colors hover:border-primary/55 hover:bg-black/48 dark:border-primary/40 dark:bg-neutral-950/55 dark:text-primary dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)] dark:hover:bg-neutral-950/68 dark:hover:border-primary/50 sm:w-auto"
+              className="inline-flex h-11 w-full items-center justify-center rounded-full border border-border bg-background/80 px-6 text-sm font-semibold text-foreground shadow-sm backdrop-blur-sm transition-all duration-200 hover:border-primary/35 hover:bg-muted/50 active:scale-[0.98] dark:border-border dark:bg-card/60 dark:hover:border-primary/40 dark:hover:bg-card/90 sm:w-auto"
             >
               Create challenge
             </Link>
           ) : (
             <Link
               href="/login"
-              className="inline-flex h-11 w-full items-center justify-center rounded-full border border-primary/40 bg-primary/5 px-6 text-sm font-semibold text-primary transition-colors hover:bg-primary/10 sm:w-auto"
+              className="inline-flex h-11 w-full items-center justify-center rounded-full border border-border bg-transparent px-6 text-sm font-semibold text-foreground transition-all duration-200 hover:border-primary/30 hover:bg-muted/40 active:scale-[0.98] sm:w-auto"
             >
               Sign in to create
             </Link>
@@ -75,20 +74,36 @@ export default async function Home() {
       </HeroSection>
 
       {/* Metrics */}
-      <section className="border-b border-border bg-muted/30">
-        <div className="mx-auto grid max-w-6xl grid-cols-1 gap-px bg-border sm:grid-cols-3">
-          <div className="bg-background px-6 py-8 text-center sm:text-left">
-            <p className="text-3xl font-semibold tabular-nums text-foreground md:text-4xl">{totalChallenges}</p>
+      <section className="border-b border-border/80 bg-muted/25">
+        <div className="mx-auto grid max-w-6xl grid-cols-1 gap-px bg-border/80 sm:grid-cols-3">
+          <div className="group relative bg-background px-6 py-8 text-center transition-colors duration-300 hover:bg-muted/20 sm:text-left">
+            <span
+              className="absolute inset-x-0 top-0 h-px scale-x-0 bg-primary/60 transition-transform duration-500 ease-out group-hover:scale-x-100"
+              aria-hidden
+            />
+            <p className="text-3xl font-semibold tabular-nums text-foreground transition-transform duration-300 ease-out group-hover:translate-y-[-1px] md:text-4xl">
+              {totalChallenges}
+            </p>
             <p className="mt-1 text-sm font-medium text-muted-foreground">Published challenges</p>
           </div>
-          <div className="bg-background px-6 py-8 text-center sm:text-left">
-            <p className="text-3xl font-semibold tabular-nums text-foreground md:text-4xl">
+          <div className="group relative bg-background px-6 py-8 text-center transition-colors duration-300 hover:bg-muted/20 sm:text-left">
+            <span
+              className="absolute inset-x-0 top-0 h-px scale-x-0 bg-primary/60 transition-transform duration-500 ease-out group-hover:scale-x-100"
+              aria-hidden
+            />
+            <p className="text-3xl font-semibold tabular-nums text-foreground transition-transform duration-300 ease-out group-hover:translate-y-[-1px] md:text-4xl">
               {totalCompletions.toLocaleString()}
             </p>
             <p className="mt-1 text-sm font-medium text-muted-foreground">Total completions</p>
           </div>
-          <div className="bg-background px-6 py-8 text-center sm:text-left">
-            <p className="text-3xl font-semibold tabular-nums text-foreground md:text-4xl">{contributorCount}</p>
+          <div className="group relative bg-background px-6 py-8 text-center transition-colors duration-300 hover:bg-muted/20 sm:text-left">
+            <span
+              className="absolute inset-x-0 top-0 h-px scale-x-0 bg-primary/60 transition-transform duration-500 ease-out group-hover:scale-x-100"
+              aria-hidden
+            />
+            <p className="text-3xl font-semibold tabular-nums text-foreground transition-transform duration-300 ease-out group-hover:translate-y-[-1px] md:text-4xl">
+              {contributorCount}
+            </p>
             <p className="mt-1 text-sm font-medium text-muted-foreground">Active contributors</p>
           </div>
         </div>
@@ -98,15 +113,15 @@ export default async function Home() {
         <div id="library" className="scroll-mt-24">
           <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h2 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">Top Rated Challenges</h2>
-              <p className="mt-2 max-w-xl text-sm text-muted-foreground md:text-base">
-                The community&apos;s favorite hands-on labs. High-quality environments designed to test your real-world skills.
+              <h2 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">Top rated challenges</h2>
+              <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground md:text-base">
+                The community&apos;s favorite hands-on labs—high-quality environments for real-world skills.
               </p>
             </div>
             <div className="flex flex-col items-start gap-3 sm:items-end">
               <Link
                 href="/library"
-                className="inline-flex h-10 items-center justify-center rounded-full border border-border bg-background px-5 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-muted"
+                className="inline-flex h-10 items-center justify-center rounded-full border border-border bg-background px-5 text-sm font-semibold text-foreground shadow-sm transition-all duration-200 hover:border-primary/25 hover:bg-muted/60 active:scale-[0.98]"
               >
                 View all challenges
               </Link>
@@ -130,14 +145,14 @@ export default async function Home() {
                 />
               ))
             ) : (
-              <div className="rounded-2xl border border-dashed border-border bg-muted/20 px-8 py-20 text-center">
+              <div className="rounded-2xl border border-dashed border-border/90 bg-muted/15 px-8 py-20 text-center transition-colors duration-300 hover:border-primary/20 hover:bg-muted/25">
                 <p className="text-base font-medium text-foreground">No highly-rated challenges yet</p>
                 <p className="mt-2 text-sm text-muted-foreground">
                   Check back soon or explore the full library to find something new.
                 </p>
                 <Link
                   href="/library"
-                  className="mt-6 inline-flex h-10 items-center justify-center rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground"
+                  className="mt-6 inline-flex h-10 items-center justify-center rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground transition-all duration-200 hover:bg-primary/92 hover:shadow-md active:scale-[0.98]"
                 >
                   Go to Library
                 </Link>
@@ -147,17 +162,17 @@ export default async function Home() {
         </div>
 
         {/* Secondary: custom image — less prominent */}
-        <section className="mt-20 scroll-mt-8 rounded-2xl border border-border bg-card p-6 shadow-sm md:p-8">
+        <section className="mt-20 scroll-mt-8 rounded-2xl border border-border/80 bg-card p-6 shadow-sm transition-shadow duration-300 hover:shadow-md md:p-8">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between lg:gap-12">
             <div className="max-w-md">
-              <h3 className="text-lg font-semibold text-foreground">Run a custom image</h3>
+              <h3 className="text-lg font-semibold tracking-tight text-foreground">Run a custom image</h3>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                 Advanced: start any Docker image that exposes port <span className="font-mono text-foreground">3000</span>.
                 Your workspace can be resumed from the feed when you&apos;re signed in.
               </p>
               <Link
                 href="/studio"
-                className="mt-4 inline-flex text-sm font-medium text-primary hover:underline"
+                className="mt-4 inline-flex text-sm font-medium text-primary underline-offset-4 transition-colors hover:text-primary/85 hover:underline"
               >
                 Open active session →
               </Link>
@@ -173,12 +188,12 @@ export default async function Home() {
                   type="text"
                   placeholder="e.g. my-registry/challenge:latest"
                   required
-                  className="h-11 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                  className="h-11 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground transition-[border-color,box-shadow] duration-200 placeholder:text-muted-foreground focus-visible:border-primary/35 focus-visible:ring-2 focus-visible:ring-ring/80 focus-visible:outline-none"
                 />
               </div>
               <button
                 type="submit"
-                className="h-11 w-full rounded-lg border border-border bg-muted/60 text-sm font-semibold text-foreground transition-colors hover:bg-muted"
+                className="h-11 w-full rounded-lg border border-border bg-muted/50 text-sm font-semibold text-foreground transition-all duration-200 hover:bg-muted hover:border-border active:scale-[0.99]"
               >
                 Launch workspace
               </button>

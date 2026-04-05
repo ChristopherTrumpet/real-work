@@ -3,150 +3,111 @@
 import { useEffect, useState, type ReactNode } from 'react'
 
 import { FlickeringGrid } from '@/components/ui/flickering-grid'
+import { cn } from '@/lib/utils'
 
-/** Rotating hero lines — type → pause → delete → next */
+/** Hero cycles through these with a crossfade (no typing). */
 export const HERO_HEADLINES = [
-  'Ship code that actually works.',
+  'Ship real software in live environments.',
+  'Solving problems where they actually occur.',
   'Master distributed systems by breaking them.',
   'Debug production-grade containers.',
   'Level up with community-rated engineering labs.',
-  'Real environments. Real high-stakes scenarios.',
 ] as const
+
+function HeroHeadline({ className }: { className?: string }) {
+  const [i, setI] = useState(0)
+  const [reduced, setReduced] = useState(false)
+
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
+    setReduced(mq.matches)
+    const on = () => setReduced(mq.matches)
+    mq.addEventListener('change', on)
+    return () => mq.removeEventListener('change', on)
+  }, [])
+
+  useEffect(() => {
+    if (reduced) return
+    const t = window.setInterval(() => {
+      setI((n) => (n + 1) % HERO_HEADLINES.length)
+    }, 4500)
+    return () => window.clearInterval(t)
+  }, [reduced])
+
+  const ariaLabel = HERO_HEADLINES.join(' ')
+
+  if (reduced) {
+    return (
+      <h1
+        className={cn(
+          'mx-auto min-h-[12rem] max-w-4xl text-center font-mono text-[clamp(1.9rem,5.2vw,3.35rem)] font-bold leading-[1.2] tracking-tight text-foreground [text-shadow:0_1px_0_color-mix(in_oklab,var(--background)_88%,transparent),0_0_22px_color-mix(in_oklab,var(--background)_62%,transparent)] sm:min-h-[10.5rem] sm:text-left sm:leading-[1.18] md:min-h-[9.5rem] md:text-[clamp(2.1rem,4.2vw,3.65rem)] lg:min-h-[8.75rem]',
+          className
+        )}
+        aria-label={ariaLabel}
+      >
+        <span className="text-pretty">{HERO_HEADLINES[0]}</span>
+      </h1>
+    )
+  }
+
+  return (
+    <h1
+      className={cn(
+        'relative mx-auto min-h-[12rem] max-w-4xl text-center font-mono text-[clamp(1.9rem,5.2vw,3.35rem)] font-bold leading-[1.2] tracking-tight [text-shadow:0_1px_0_color-mix(in_oklab,var(--background)_88%,transparent),0_0_22px_color-mix(in_oklab,var(--background)_62%,transparent)] sm:min-h-[10.5rem] sm:text-left sm:leading-[1.18] md:min-h-[9.5rem] md:text-[clamp(2.1rem,4.2vw,3.65rem)] lg:min-h-[8.75rem]',
+        className
+      )}
+      aria-label={ariaLabel}
+      aria-live="polite"
+    >
+      {HERO_HEADLINES.map((line, idx) => (
+        <span
+          key={line}
+          className={cn(
+            'absolute inset-x-0 top-0 text-pretty text-foreground transition-[opacity,transform] duration-[580ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none',
+            idx === i
+              ? 'translate-y-0 opacity-100'
+              : 'pointer-events-none translate-y-1.5 opacity-0'
+          )}
+        >
+          {line}
+        </span>
+      ))}
+    </h1>
+  )
+}
 
 type HeroSectionProps = {
   children: ReactNode
 }
 
 export function HeroSection({ children }: HeroSectionProps) {
-  const [displayText, setDisplayText] = useState('')
-  const [skipTyping, setSkipTyping] = useState(false)
-
-  /**
-   * One effect avoids a race: useLayoutEffect used to set skipTyping while the first
-   * useEffect(commit with skipTyping=false) could still run and start timers, then get
-   * torn down — leaving an empty headline on some browsers / strict mode.
-   *
-   * prefers-reduced-motion: we don't do per-character typing (a11y); we rotate full lines
-   * so the hero still feels alive vs a single frozen string.
-   */
-  useEffect(() => {
-    const reduced =
-      typeof window !== 'undefined' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches
-
-    let cancelled = false
-
-    if (reduced) {
-      setSkipTyping(true)
-      let phraseI = 0
-      setDisplayText(HERO_HEADLINES[phraseI])
-
-      const intervalId = window.setInterval(() => {
-        if (cancelled) return
-        phraseI = (phraseI + 1) % HERO_HEADLINES.length
-        setDisplayText(HERO_HEADLINES[phraseI])
-      }, 4200)
-
-      return () => {
-        cancelled = true
-        window.clearInterval(intervalId)
-      }
-    }
-
-    setSkipTyping(false)
-
-    let phraseI = 0
-    let chars = 0
-    let phase: 'typing' | 'pause' | 'deleting' = 'typing'
-    let timeoutId: any = undefined
-
-    const phrase = () => HERO_HEADLINES[phraseI % HERO_HEADLINES.length]
-
-    const step = () => {
-      if (cancelled) return
-      const p = phrase()
-
-      if (phase === 'typing') {
-        if (chars < p.length) {
-          chars++
-          setDisplayText(p.slice(0, chars))
-          timeoutId = window.setTimeout(step, 44)
-        } else {
-          phase = 'pause'
-          timeoutId = window.setTimeout(step, 2400)
-        }
-      } else if (phase === 'pause') {
-        phase = 'deleting'
-        step()
-      } else if (phase === 'deleting') {
-        if (chars > 0) {
-          chars--
-          setDisplayText(p.slice(0, chars))
-          timeoutId = window.setTimeout(step, 26)
-        } else {
-          phraseI++
-          timeoutId = window.setTimeout(() => {
-            phase = 'typing'
-            step()
-          }, 380)
-        }
-      }
-    }
-
-    step()
-
-    return () => {
-      cancelled = true
-      if (timeoutId !== undefined) window.clearTimeout(timeoutId)
-    }
-  }, [])
-
-  const ariaLabel = HERO_HEADLINES.join(' ')
-
   return (
-    <section className="relative border-b border-border">
-      <div
-        className="pointer-events-none absolute inset-0 overflow-hidden bg-background"
-        aria-hidden
-      >
+    <section className="relative overflow-hidden border-b border-border/70 bg-background">
+      <div className="pointer-events-none absolute inset-0" aria-hidden>
         <div className="absolute inset-0 text-primary">
           <FlickeringGrid
-            className="absolute inset-0 opacity-80"
+            className="absolute inset-0 opacity-[0.72] sm:opacity-80"
             squareSize={4}
             gridGap={6}
-            flickerChance={0.35}
+            flickerChance={0.32}
             color="currentColor"
-            maxOpacity={0.35}
+            maxOpacity={0.34}
+            interactive
+            mouseInfluenceRadius={220}
           />
         </div>
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_120%_80%_at_50%_-35%,color-mix(in_oklab,var(--color-primary)_14%,transparent),transparent_58%)]" />
-        {/* Readability: veil over the grid so type does not compete with motion */}
         <div
-          className="absolute inset-0 z-[1] bg-[radial-gradient(ellipse_115%_75%_at_50%_38%,color-mix(in_oklab,var(--background)_88%,transparent)_0%,color-mix(in_oklab,var(--background)_45%,transparent)_52%,transparent_78%)]"
+          className="absolute inset-0 z-[1] bg-[radial-gradient(ellipse_118%_68%_at_50%_36%,color-mix(in_oklab,var(--background)_78%,transparent)_0%,color-mix(in_oklab,var(--background)_42%,transparent)_45%,transparent_74%)]"
           aria-hidden
         />
       </div>
 
-      <div className="relative z-10 mx-auto max-w-6xl px-4 pb-16 pt-12 sm:px-6 sm:pb-20 sm:pt-16 md:pb-24 md:pt-20">
-        <p className="mb-3 text-center text-xs font-semibold uppercase tracking-[0.2em] text-primary drop-shadow-[0_1px_2px_color-mix(in_oklab,var(--background)_85%,transparent)] sm:text-left">
-          Live environments · Real debugging
-        </p>
-        <h1
-          className="mx-auto min-h-[5rem] max-w-3xl text-center text-3xl font-semibold tracking-tight text-foreground [text-shadow:0_1px_0_color-mix(in_oklab,var(--background)_72%,transparent),0_0_2.5rem_color-mix(in_oklab,var(--background)_55%,transparent)] sm:mx-0 sm:min-h-[6rem] sm:text-left sm:text-4xl md:min-h-[7rem] md:text-5xl md:leading-[1.15]"
-          aria-label={ariaLabel}
-          aria-live={skipTyping ? 'polite' : 'off'}
-        >
-          <span className="text-foreground">{displayText}</span>
-          {!skipTyping && (
-            <span
-              className="ml-0.5 inline-block h-[0.85em] w-[3px] translate-y-0.5 animate-pulse bg-primary align-baseline drop-shadow-[0_0_6px_color-mix(in_oklab,var(--background)_80%,transparent)] md:h-[0.9em]"
-              aria-hidden
-            />
-          )}
-        </h1>
-        <div className="relative [&_p]:[text-shadow:0_0_1.75rem_color-mix(in_oklab,var(--background)_65%,transparent)]">
-          {children}
+      <div className="relative z-10 mx-auto max-w-6xl px-4 pb-8 pt-9 sm:px-6 sm:pb-10 sm:pt-10 md:pb-12 md:pt-12">
+        <div className="mx-auto max-w-4xl sm:mx-0">
+          <HeroHeadline />
         </div>
+
+        <div className="mt-8 max-w-2xl sm:mt-9 [&_p]:text-muted-foreground">{children}</div>
       </div>
     </section>
   )
