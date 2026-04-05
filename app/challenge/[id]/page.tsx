@@ -74,8 +74,18 @@ export default async function ChallengePage({ params }: PageProps) {
 
       <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:gap-10">
         <div className="flex min-w-0 flex-1 flex-col gap-8">
-          <article className="rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8">
-            <div className="flex flex-wrap items-start justify-between gap-4">
+          <article className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+            {post.thumbnail_url && (
+              <div className="aspect-video w-full border-b border-border bg-muted">
+                <img
+                  src={post.thumbnail_url}
+                  alt={post.title}
+                  className="h-full w-full object-cover"
+                />
+              </div>
+            )}
+            <div className="p-6 sm:p-8">
+              <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <h1 className="text-2xl font-bold text-foreground">{post.title}</h1>
                 <p className="mt-2 text-sm text-muted-foreground">
@@ -166,11 +176,11 @@ export default async function ChallengePage({ params }: PageProps) {
                       Launch challenge
                     </button>
                   </form>
-                )}
-              </div>
-            )}
-          </article>
-
+                  )}
+                  </div>
+                  )}
+                  </div>
+                  </article>
           <section className="rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8">
             <CommentThread
               postId={post.id}
@@ -195,6 +205,54 @@ export default async function ChallengePage({ params }: PageProps) {
               Star ratings are submitted on the completion page after you finish. Solvers can discuss in the section
               below the challenge.
             </p>
+          </div>
+
+          <div className="mt-6 rounded-2xl border border-border bg-card p-5 shadow-sm">
+            <h3 className="mb-4 text-xs font-bold uppercase tracking-widest text-muted-foreground">Challenge Info</h3>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Difficulty</span>
+                <span className={`font-semibold capitalize ${
+                  post.difficulty === 'easy' ? 'text-emerald-500' : 
+                  post.difficulty === 'hard' ? 'text-rose-500' : 'text-amber-500'
+                }`}>
+                  {post.difficulty || 'medium'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Language</span>
+                <span className="font-medium text-foreground capitalize">{post.benchmark_language || 'Any'}</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Added</span>
+                <span className="font-medium text-foreground">
+                  {new Date(post.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Total Solves</span>
+                <span className="font-medium text-foreground">{post.number_of_completions ?? 0}</span>
+              </div>
+              {post.benchmark_timeout_ms && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Timeout</span>
+                  <span className="font-medium text-foreground">{(post.benchmark_timeout_ms / 1000).toFixed(1)}s</span>
+                </div>
+              )}
+              
+              {post.tags && post.tags.length > 0 && (
+                <div className="border-t border-border pt-4">
+                  <span className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Tags</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {post.tags.map((tag: string, i: number) => (
+                      <span key={i} className="rounded-md bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted/80">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </aside>
       </div>
