@@ -16,12 +16,15 @@ export default function PreviewWorkspace({
   comments,
   currentUserId,
   canDiscuss = false,
+  basePath = '/preview',
 }: {
   post?: any
   comments?: any[]
   currentUserId?: string | null
   /** True when the user has completed this challenge (can post and reply in the sidebar). */
   canDiscuss?: boolean
+  /** Route prefix for clearing the URL when closing a port-only session (e.g. `/studio` or `/preview`). */
+  basePath?: string
 }) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -88,7 +91,7 @@ export default function PreviewWorkspace({
 
   const handleClose = () => {
     setPort(null)
-    window.history.replaceState(null, '', '/preview')
+    window.history.replaceState(null, '', basePath)
   }
 
   const handleBackToDashboard = async () => {
@@ -110,7 +113,7 @@ export default function PreviewWorkspace({
       }
       await killContainer(parseInt(port, 10))
       setPort(null)
-      window.history.replaceState(null, '', '/preview')
+      window.history.replaceState(null, '', basePath)
       router.push(`/challenge/${post.id}/complete`)
     } finally {
       setIsSubmitting(false)
@@ -187,7 +190,9 @@ export default function PreviewWorkspace({
 
       <nav className="h-16 shrink-0 px-6 bg-gray-900/95 backdrop-blur-sm text-white flex justify-between items-center border-b border-gray-800 z-50">
         <div className="flex items-center gap-4">
-          <h1 className="font-bold text-lg tracking-tight">Active Workspace</h1>
+          <h1 className="font-bold text-lg tracking-tight">
+            {basePath === '/studio' ? 'Studio workspace' : 'Active Workspace'}
+          </h1>
           {post && (
              <span className="text-xs bg-zinc-800 text-zinc-300 px-2 py-1 rounded-full border border-zinc-700">
                {post.title}

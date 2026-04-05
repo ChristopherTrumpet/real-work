@@ -21,6 +21,7 @@ export async function submitCompletion(postId: string) {
   }
 
   revalidatePath('/preview')
+  revalidatePath('/studio')
   revalidatePath('/')
   revalidatePath(`/challenge/${postId}`)
   revalidatePath(`/challenge/${postId}/complete`)
@@ -47,6 +48,7 @@ export async function submitRating(postId: string, rating: number) {
   }
 
   revalidatePath('/preview')
+  revalidatePath('/studio')
   revalidatePath(`/challenge/${postId}`)
   revalidatePath(`/challenge/${postId}/complete`)
   return { success: true }
@@ -87,6 +89,7 @@ export async function submitComment(postId: string, formData: FormData) {
   }
 
   revalidatePath('/preview')
+  revalidatePath('/studio')
   revalidatePath(`/challenge/${postId}`)
   revalidatePath(`/challenge/${postId}/complete`)
   return { success: true }
