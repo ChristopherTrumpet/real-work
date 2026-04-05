@@ -4,14 +4,55 @@ import React, { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Rocket, Shield, ArrowLeft } from 'lucide-react'
-import { isContainerReady } from '@/app/actions/docker'
+import { isContainerReady, killContainer } from '@/app/actions/docker'
+import { createClient } from '@/utils/supabase/client'
 
 export default function WorkspacePage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const port = searchParams.get('port')
+  const postId = searchParams.get('postId')
   const [hostname] = useState(() => typeof window !== 'undefined' ? window.location.hostname : 'localhost')
   const [isReady, setIsReady] = useState(false)
+  const [isCompleting, setIsCompleting] = useState(false)
+
+  // Listen for completion in Supabase Realtime
+  useEffect(() => {
+    if (!postId) return
+    
+    console.log(`[workspace] Subscribing to completions for post ${postId}`);
+    const supabase = createClient()
+    
+    const channel = supabase
+      .channel('completion-detect')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'user_completions',
+          filter: `post_id=eq.${postId}`
+        },
+        async (payload) => {
+          console.log(`[workspace] Completion detected in DB:`, payload.new);
+          // Verify it's the current user
+          const { data: { user } } = await supabase.auth.getUser()
+          if (payload.new.user_id === user?.id && !isCompleting) {
+            console.log(`[workspace] Matching user completion found. Redirecting...`);
+            setIsCompleting(true)
+            router.push(`/challenge/${postId}/complete`)
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log(`[workspace] Realtime status: ${status}`);
+      })
+
+    return () => {
+      console.log(`[workspace] Unsubscribing from completions`);
+      supabase.removeChannel(channel)
+    }
+  }, [postId, router, isCompleting])
 
   // Poll for container readiness
   useEffect(() => {

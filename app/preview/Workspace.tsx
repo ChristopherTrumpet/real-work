@@ -12,6 +12,7 @@ import { BenchmarkResult } from '@/lib/evaluator'
 import BenchmarkResults from '@/components/BenchmarkResults'
 import { SignalLow, SignalMedium, SignalHigh } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { createClient } from '@/utils/supabase/client'
 
 interface WorkspacePost {
   id: string;
@@ -50,12 +51,51 @@ export default function PreviewWorkspace({
   const [hostname, setHostname] = useState<string>('localhost')
   const [isLeaving, setIsLeaving] = useState(false)
   const [isReady, setIsReady] = useState(false)
+  const [isCompletingSession, setIsCompletingSession] = useState(false)
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setHostname(window.location.hostname)
     }
   }, [])
+
+  // Listen for completion in Supabase Realtime
+  useEffect(() => {
+    if (!post?.id || isCompletingSession) return
+    
+    console.log(`[preview] Subscribing to completions for post ${post.id}`);
+    const supabase = createClient()
+    
+    const channel = supabase
+      .channel(`completion-detect-${post.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'user_completions',
+          filter: `post_id=eq.${post.id}`
+        },
+        async (payload) => {
+          console.log(`[preview] Completion detected in DB:`, payload.new);
+          // Verify it's the current user
+          const { data: { user } } = await supabase.auth.getUser()
+          if (payload.new.user_id === user?.id && !isCompletingSession) {
+            console.log(`[preview] Matching user completion found. Redirecting...`);
+            setIsCompletingSession(true)
+            router.push(`/challenge/${post.id}/complete`)
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log(`[preview] Realtime status: ${status}`);
+      })
+
+    return () => {
+      console.log(`[preview] Unsubscribing from completions`);
+      supabase.removeChannel(channel)
+    }
+  }, [post?.id, router, isCompletingSession])
   
   const [isSubmitting, setIsSubmitting] = useState(false)
 
