@@ -21,6 +21,20 @@ export async function addComment(formData: FormData) {
     return { ok: false as const, error: 'Comment cannot be empty.' }
   }
 
+  const { data: solved } = await supabase
+    .from('user_completions')
+    .select('user_id')
+    .eq('post_id', postId)
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  if (!solved) {
+    return {
+      ok: false as const,
+      error: 'Complete this challenge before commenting or replying.',
+    }
+  }
+
   const { error } = await supabase.from('post_comments').insert({
     post_id: postId,
     user_id: user.id,
@@ -33,5 +47,7 @@ export async function addComment(formData: FormData) {
   }
 
   revalidatePath(`/challenge/${postId}`)
+  revalidatePath(`/challenge/${postId}/complete`)
+  revalidatePath('/preview')
   return { ok: true as const }
 }
