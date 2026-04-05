@@ -127,36 +127,37 @@ RUN chown -R abc:abc /workspace && chmod -R 777 /workspace
       await fs.copyFile(path.join(tmpDir, file), path.join(exportDir, file))
     }
 
-    // 4. Build Docker image
-    appendLog(buildId, `Executing docker build -t ${imageName}...`, true)
+    // 4. Build and Push Multi-platform Docker image
+    appendLog(buildId, `Executing multi-platform build (amd64, arm64) and pushing to registry...`, true)
     
     await new Promise((resolve, reject) => {
-      const child = spawn('docker', ['build', '-t', imageName, tmpDir])
+      // Use buildx for multi-platform support. 
+      // We use --push to send all platforms to the registry in one go.
+      const child = spawn('docker', [
+        'buildx', 'build', 
+        '--platform', 'linux/amd64,linux/arm64', 
+        '-t', imageName, 
+        '--push', 
+        tmpDir
+      ])
+      
       child.stdout.on('data', (data) => appendLog(buildId, data.toString().trim()))
-      child.stderr.on('data', (data) => appendLog(buildId, `[build-stderr] ${data.toString().trim()}`))
+      child.stderr.on('data', (data) => appendLog(buildId, `[build] ${data.toString().trim()}`))
+      
       child.on('close', (code) => {
         if (code === 0) resolve(true)
-        else reject(new Error(`Docker build failed with code ${code}`))
+        else reject(new Error(`Multi-platform build failed with code ${code}`))
       })
     })
 
-    appendLog(buildId, `Image built successfully: ${imageName}`)
+    appendLog(buildId, `Multi-platform image pushed successfully: ${imageName}`)
 
-    // 4.5 Push image to registry
-    appendLog(buildId, `Pushing image to cloud registry: ${imageName}...`, true)
-    await new Promise((resolve, reject) => {
-      const child = spawn('docker', ['push', imageName])
-      child.stdout.on('data', (data) => appendLog(buildId, `[push] ${data.toString().trim()}`))
-      child.stderr.on('data', (data) => appendLog(buildId, `[push-stderr] ${data.toString().trim()}`))
-      child.on('close', (code) => {
-        if (code === 0) resolve(true)
-        else reject(new Error(`Docker push failed with code ${code}`))
-      })
-    })
-    appendLog(buildId, `Successfully pushed to cloud registry.`)
+    // 5. Pull local version and spin up container
+    appendLog(buildId, `Provisioning live workspace (pulling current platform)...`, true)
+    
+    // Since buildx pushed directly to registry, we pull the current platform version to run it locally
+    await execAsync(`docker pull ${imageName}`)
 
-    // 5. Spin up container
-    appendLog(buildId, `Provisioning live workspace...`, true)
     const internalPort = '3000'
     const runCmd = `docker run -d --shm-size="1gb" -p ${internalPort} ${imageName}`
     const { stdout: runStdout } = await execAsync(runCmd)
