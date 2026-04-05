@@ -31,8 +31,15 @@ export default function PreviewWorkspace({
   const initialPort = searchParams.get('port')
   
   const [port, setPort] = useState<string | null>(null)
+  const [hostname, setHostname] = useState<string>('localhost')
   const [isLeaving, setIsLeaving] = useState(false)
   const [isReady, setIsReady] = useState(false)
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setHostname(window.location.hostname)
+    }
+  }, [])
   
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -299,7 +306,8 @@ export default function PreviewWorkspace({
                </div>
             ) : (
               <iframe 
-                src={`http://localhost:${port}`} 
+                key={`${hostname}-${port}-${isReady}`}
+                src={`http://${hostname}:${port}`} 
                 className="w-full h-full border-none"
                 title="Active Workspace"
               />

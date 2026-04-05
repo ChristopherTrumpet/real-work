@@ -24,9 +24,16 @@ export default function DraftWorkspace({ post }: { post: any }) {
   const { activeBuild, startTrackingBuild } = useBuild()
   
   const [port, setPort] = useState<string | null>(searchParams.get('port'))
+  const [hostname, setHostname] = useState<string>('localhost')
   const [containerId, setContainerId] = useState<string | null>(searchParams.get('containerId'))
   const [copied, setCopied] = useState(false)
   const [isPublishing, setIsPublishing] = useState(false)
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setHostname(window.location.hostname)
+    }
+  }, [])
 
   // Sync state from active build if it finishes while we are on this page
   useEffect(() => {
@@ -171,7 +178,8 @@ export default function DraftWorkspace({ post }: { post: any }) {
         <main className="flex-1 bg-background relative">
           {port ? (
             <iframe
-              src={`http://127.0.0.1:${port}`}
+              key={`${hostname}-${port}`}
+              src={`http://${hostname}:${port}`}
               className="w-full h-full border-none shadow-2xl animate-in fade-in duration-700"
               title="Challenge Workspace"
             />

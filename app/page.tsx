@@ -17,18 +17,20 @@ export default async function Home() {
   const { data: allPosts } = await supabase
     .from('posts')
     .select('id, user_id, number_of_completions')
+    .eq('is_draft', false)
 
   const totalChallenges = allPosts?.length ?? 0
   const totalCompletions = allPosts?.reduce((acc, c) => acc + (c.number_of_completions ?? 0), 0) ?? 0
   const contributorCount = new Set(allPosts?.map((c) => c.user_id as string).filter(Boolean)).size
 
-  // Fetch top 5 by rating
+  // Fetch top 9 by rating
   const { data: topChallenges, error: fetchError } = await supabase
     .from('posts')
     .select('*, profiles!user_id(username, full_name, avatar_url)')
+    .eq('is_draft', false)
     .order('average_rating', { ascending: false, nullsFirst: false })
     .order('ratings_count', { ascending: false })
-    .limit(5)
+    .limit(9)
 
   const list = (topChallenges ?? []) as ChallengeFeedItem[]
 
@@ -134,18 +136,20 @@ export default async function Home() {
             </div>
           )}
 
-          <div className="flex flex-col gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {list.length > 0 ? (
-              list.map((container) => (
-                <ChallengeFeedCard
-                  key={container.id}
-                  container={container}
-                  userId={user?.id}
-                  hasSession={activeSessions.has(container.id)}
-                />
+              list.map((container, i) => (
+                <div key={container.id} className="animate-fade-up" style={{ '--stagger': i * 0.1 } as React.CSSProperties}>
+                  <ChallengeFeedCard
+                    container={container}
+                    userId={user?.id}
+                    hasSession={activeSessions.has(container.id)}
+                    size="md"
+                  />
+                </div>
               ))
             ) : (
-              <div className="rounded-2xl border border-dashed border-border/90 bg-muted/15 px-8 py-20 text-center transition-colors duration-300 hover:border-primary/20 hover:bg-muted/25">
+              <div className="col-span-full rounded-2xl border border-dashed border-border/90 bg-muted/15 px-8 py-20 text-center transition-colors duration-300 hover:border-primary/20 hover:bg-muted/25">
                 <p className="text-base font-medium text-foreground">No highly-rated challenges yet</p>
                 <p className="mt-2 text-sm text-muted-foreground">
                   Check back soon or explore the full library to find something new.

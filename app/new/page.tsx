@@ -13,7 +13,8 @@ import {
   ImageIcon,
   X,
   ShieldCheck,
-  Globe
+  Globe,
+  Terminal
 } from 'lucide-react'
 import { buildDraftContainer } from '@/app/actions/builder'
 import { fetchGitHubRepos } from '@/app/actions/github'
@@ -31,7 +32,8 @@ export default function NewChallengePage() {
     difficulty: 'medium',
     tags: '',
     repoUrl: '',
-    thumbnailUrl: ''
+    thumbnailUrl: '',
+    setupScript: ''
   })
 
   const [repos, setRepos] = useState<any[]>([])
@@ -39,6 +41,7 @@ export default function NewChallengePage() {
   const [repoSearch, setRepoSearch] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isSourceExpanded, setIsSourceExpanded] = useState(false)
+  const [isScriptExpanded, setIsScriptExpanded] = useState(false)
 
   const loadRepos = async () => {
     setIsLoadingRepos(true)
@@ -290,6 +293,50 @@ export default function NewChallengePage() {
                   )}
                 </div>
 
+                {/* Setup Script — expandable */}
+                <div className="pt-2 border-t border-border">
+                  <button
+                    type="button"
+                    onClick={() => setIsScriptExpanded(!isScriptExpanded)}
+                    className="group w-full flex items-center justify-between py-3 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Terminal className={cn(
+                        "size-4 transition-colors shrink-0",
+                        formData.setupScript ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
+                      )} />
+                      <div className="text-left">
+                        <p className="text-sm font-semibold text-foreground">
+                          {formData.setupScript ? 'Setup script configured' : 'Add setup script'}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {formData.setupScript
+                            ? 'Custom bash script will run on launch'
+                            : 'Run commands automatically when the container starts'}
+                        </p>
+                      </div>
+                    </div>
+                    <ChevronDown className={cn(
+                      "size-4 text-muted-foreground transition-transform duration-200 shrink-0",
+                      isScriptExpanded && "rotate-180"
+                    )} />
+                  </button>
+
+                  {isScriptExpanded && (
+                    <div className="mt-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                      <textarea
+                        value={formData.setupScript}
+                        onChange={e => setFormData({ ...formData, setupScript: e.target.value })}
+                        placeholder="#!/bin/bash\nnpm install && npm run dev\necho 'Ready!'"
+                        className="w-full h-32 border border-input rounded-lg bg-muted/20 p-4 text-xs font-mono outline-none focus:ring-2 focus:ring-primary/20 focus:bg-card transition-all resize-none placeholder:text-muted-foreground/30"
+                      />
+                      <p className="mt-2 text-[10px] text-muted-foreground italic">
+                        Executed with root privileges as a startup init script.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
               </div>
             </section>
           </div>
@@ -354,9 +401,17 @@ export default function NewChallengePage() {
                     <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60">
                       Environment
                     </span>
-                    <code className="text-xs font-mono text-foreground bg-muted/40 px-2.5 py-1.5 rounded-md border border-border/50 flex items-center gap-2 w-fit">
-                      <Globe className="size-3 text-primary/60 shrink-0" />
-                      ubuntu-xfce:stable
+                    <code className="text-xs font-mono text-foreground bg-muted/40 px-2.5 py-1.5 rounded-md border border-border/50 flex flex-col gap-1 w-fit">
+                      <div className="flex items-center gap-2">
+                        <Globe className="size-3 text-primary/60 shrink-0" />
+                        ubuntu-xfce:stable
+                      </div>
+                      {formData.setupScript && (
+                        <div className="flex items-center gap-2 text-[9px] text-primary/80 border-t border-border/30 pt-1 mt-1">
+                          <Terminal className="size-2.5 shrink-0" />
+                          Custom init script active
+                        </div>
+                      )}
                     </code>
                   </div>
 

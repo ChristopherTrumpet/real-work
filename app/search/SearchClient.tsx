@@ -114,6 +114,7 @@ export default function SearchClient() {
             .select(
               'id, title, description, difficulty, content_url, tags, created_at, number_of_completions, average_rating, ratings_count, profiles!user_id(username, full_name)'
             )
+            .eq('is_draft', false)
 
           if (term) {
             const inner = escapeIlikePattern(term)
