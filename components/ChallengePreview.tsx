@@ -8,7 +8,13 @@ import { cn } from '@/lib/utils'
 import { submitCompletion } from '@/app/actions/preview'
 import { deleteChallenge } from '@/app/actions/delete-challenge'
 
-export default function ChallengePreview({ post, currentUserId }: { post: any, currentUserId?: string }) {
+interface PreviewPost {
+  id: string;
+  user_id: string;
+  [key: string]: any;
+}
+
+export default function ChallengePreview({ post, currentUserId }: { post: PreviewPost, currentUserId?: string }) {
   const router = useRouter()
   const [status, setStatus] = useState<'deploying' | 'ready' | 'error'>('deploying')
   const [port, setPort] = useState<string | null>(null)
@@ -49,8 +55,9 @@ export default function ChallengePreview({ post, currentUserId }: { post: any, c
     setIsDeleting(true)
     try {
       await deleteChallenge(post.id)
-    } catch (e: any) {
-      alert('Failed to delete: ' + e.message)
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e)
+      alert('Failed to delete: ' + message)
       setIsDeleting(false)
     }
   }
@@ -129,7 +136,7 @@ export default function ChallengePreview({ post, currentUserId }: { post: any, c
                 <div className="space-y-2">
                   <h3 className="font-bold text-blue-700 dark:text-blue-300">Workspace is Ready</h3>
                   <p className="text-sm text-blue-600/80 dark:text-blue-400/80 leading-relaxed">
-                    Your Linux Desktop environment is live. We've pre-launched <strong>VS Code</strong> with the project files and <strong>Firefox</strong> for previewing the site.
+                    Your Linux Desktop environment is live. We&apos;ve pre-launched <strong>VS Code</strong> with the project files and <strong>Firefox</strong> for previewing the site.
                   </p>
                   <div className="flex flex-wrap gap-4 pt-2">
                     <div className="flex items-center gap-2 text-xs font-semibold text-blue-700 dark:text-blue-300">

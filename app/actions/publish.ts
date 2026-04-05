@@ -98,12 +98,15 @@ async function runPublishProcess(buildId: string, postId: string, containerId: s
     try {
       await execAsync(`docker stop ${containerId} && docker rm ${containerId}`)
       await execAsync(`docker rmi ${localSnapshotTag}`)
-    } catch (e) {}
+    } catch {
+      // Ignore cleanup errors
+    }
 
     finishBuild(buildId, { postId })
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Publish Error:', error)
-    failBuild(buildId, error.message || String(error))
+    const message = error instanceof Error ? error.message : String(error)
+    failBuild(buildId, message)
   }
 }

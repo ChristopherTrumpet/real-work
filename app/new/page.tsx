@@ -15,12 +15,23 @@ import {
   ShieldCheck,
   Globe,
   Terminal,
-  Upload
+  Upload,
+  Info,
+  SignalLow,
+  SignalMedium,
+  SignalHigh
 } from 'lucide-react'
 import { buildDraftContainer } from '@/app/actions/builder'
 import { fetchGitHubRepos } from '@/app/actions/github'
 import { useBuild } from '@/lib/build-context'
 import { cn } from '@/lib/utils'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 export default function NewChallengePage() {
   const router = useRouter()
@@ -165,18 +176,34 @@ export default function NewChallengePage() {
                     <label className="text-xs font-semibold tracking-wider uppercase text-muted-foreground">
                       Difficulty
                     </label>
-                    <div className="relative">
-                      <select
-                        value={formData.difficulty}
-                        onChange={e => setFormData({ ...formData, difficulty: e.target.value })}
-                        className="w-full h-12 border border-input rounded-lg bg-muted/10 px-4 text-base font-medium outline-none focus:ring-2 focus:ring-primary/20 focus:bg-card transition-all appearance-none"
-                      >
-                        <option value="easy">🟢 Easy</option>
-                        <option value="medium">🟡 Medium</option>
-                        <option value="hard">🔴 Hard</option>
-                      </select>
-                      <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
-                    </div>
+                    <Select
+                      value={formData.difficulty}
+                      onValueChange={value => setFormData({ ...formData, difficulty: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select difficulty" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="easy">
+                          <div className="flex items-center gap-2">
+                            <SignalLow className="size-3.5 text-emerald-500" />
+                            <span>Easy</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="medium">
+                          <div className="flex items-center gap-2">
+                            <SignalMedium className="size-3.5 text-amber-500" />
+                            <span>Medium</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="hard">
+                          <div className="flex items-center gap-2">
+                            <SignalHigh className="size-3.5 text-rose-500" />
+                            <span>Hard</span>
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2.5">
                     <label className="text-xs font-semibold tracking-wider uppercase text-muted-foreground">
@@ -337,48 +364,93 @@ export default function NewChallengePage() {
                   </button>
 
                   {isScriptExpanded && (
-                    <div className="mt-4 animate-in fade-in slide-in-from-top-2 duration-300 space-y-4">
-                      <div className="flex items-center gap-4">
-                        <textarea
-                          value={formData.setupScript}
-                          onChange={e => setFormData({ ...formData, setupScript: e.target.value })}
-                          placeholder="#!/bin/bash\nnpm install && npm run dev\necho 'Ready!'"
-                          className="flex-1 h-32 border border-input rounded-lg bg-muted/20 p-4 text-xs font-mono outline-none focus:ring-2 focus:ring-primary/20 focus:bg-card transition-all resize-none placeholder:text-muted-foreground/30"
-                        />
-                        <div className="flex flex-col gap-2">
-                           <input
-                            type="file"
-                            id="setup-script-upload"
-                            className="hidden"
-                            accept=".sh"
-                            onChange={handleFileUpload}
-                          />
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="h-10 gap-2 text-xs"
-                            onClick={() => document.getElementById('setup-script-upload')?.click()}
-                          >
-                            <Upload className="size-3.5" />
-                            Upload .sh
-                          </Button>
-                          {formData.setupScript && (
+                    <div className="mt-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                      {!formData.setupScript ? (
+                        <div className="py-10 border border-dashed border-border rounded-xl flex flex-col items-center justify-center gap-5 bg-muted/5">
+                          <Terminal className="size-7 text-muted-foreground/30" />
+                          <div className="space-y-1.5 text-center px-4">
+                            <p className="font-semibold text-sm text-foreground">Write or upload a script</p>
+                            <p className="text-xs text-muted-foreground max-w-xs mx-auto">
+                              Automate dependency installation and environment setup.
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-3">
                             <Button
                               type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="h-10 text-xs text-muted-foreground hover:text-destructive"
-                              onClick={() => setFormData({ ...formData, setupScript: '' })}
+                              variant="outline"
+                              onClick={() => setFormData({ ...formData, setupScript: '#!/bin/bash\n\n' })}
+                              className="gap-2 h-10 px-5"
                             >
-                              Clear
+                              <Terminal className="size-4" />
+                              Write script
                             </Button>
-                          )}
+                            <div className="relative">
+                              <input
+                                type="file"
+                                id="setup-script-upload-empty"
+                                className="hidden"
+                                accept=".sh"
+                                onChange={handleFileUpload}
+                              />
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => document.getElementById('setup-script-upload-empty')?.click()}
+                                className="gap-2 h-10 px-5"
+                              >
+                                <Upload className="size-4" />
+                                Upload .sh
+                              </Button>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                      <p className="mt-2 text-[10px] text-muted-foreground italic">
-                        Executed with root privileges as a startup init script. Ensure your script starts with #!/bin/bash.
-                      </p>
+                      ) : (
+                        <div className="space-y-3">
+                          <div className="relative group/script">
+                            <textarea
+                              value={formData.setupScript}
+                              onChange={e => setFormData({ ...formData, setupScript: e.target.value })}
+                              placeholder="#!/bin/bash\nnpm install && npm run dev\necho 'Ready!'"
+                              className="w-full h-48 border border-input rounded-xl bg-muted/20 p-5 text-xs font-mono outline-none focus:ring-2 focus:ring-primary/20 focus:bg-card transition-all resize-none placeholder:text-muted-foreground/30 leading-relaxed shadow-inner"
+                            />
+                            <div className="absolute top-3 right-3 flex items-center gap-2 opacity-0 group-hover/script:opacity-100 transition-opacity">
+                              <input
+                                type="file"
+                                id="setup-script-upload-active"
+                                className="hidden"
+                                accept=".sh"
+                                onChange={handleFileUpload}
+                              />
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                size="sm"
+                                className="h-8 text-[10px] font-bold uppercase tracking-wider gap-1.5 bg-background/80 backdrop-blur-md border border-border shadow-sm"
+                                onClick={() => document.getElementById('setup-script-upload-active')?.click()}
+                              >
+                                <Upload className="size-3" />
+                                Replace
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                size="sm"
+                                className="h-8 text-[10px] font-bold uppercase tracking-wider gap-1.5 bg-background/80 backdrop-blur-md border border-border text-muted-foreground hover:text-destructive shadow-sm"
+                                onClick={() => setFormData({ ...formData, setupScript: '' })}
+                              >
+                                <X className="size-3" />
+                                Clear
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="flex items-start gap-2.5 px-1">
+                            <Info className="size-3.5 text-primary/60 shrink-0 mt-0.5" />
+                            <p className="text-[10px] text-muted-foreground leading-normal font-medium italic">
+                              Executed with root privileges as a startup init script. Ensure your script starts with #!/bin/bash.
+                            </p>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -420,13 +492,16 @@ export default function NewChallengePage() {
                 )}
                 <div className="absolute top-4 left-4">
                   <span className={cn(
-                    "px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border backdrop-blur-sm",
+                    "px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border backdrop-blur-sm flex items-center gap-1.5",
                     formData.difficulty === 'easy'
                       ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
                       : formData.difficulty === 'hard'
                         ? "bg-rose-500/20 text-rose-400 border-rose-500/30"
                         : "bg-amber-500/20 text-amber-400 border-amber-500/30"
                   )}>
+                    {formData.difficulty === 'easy' && <SignalLow className="size-3" />}
+                    {formData.difficulty === 'medium' && <SignalMedium className="size-3" />}
+                    {formData.difficulty === 'hard' && <SignalHigh className="size-3" />}
                     {formData.difficulty}
                   </span>
                 </div>

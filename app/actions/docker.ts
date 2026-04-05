@@ -18,7 +18,7 @@ export async function resetProgress(postId: string, userId: string) {
   const progressTag = `realwork-progress:${userId}-${postId}`
   try {
     await execAsync(`docker rmi -f ${progressTag}`)
-  } catch (e) {
+  } catch {
     // Image might not exist, that's fine
   }
   
@@ -86,7 +86,7 @@ export async function deployContainer(formData: FormData) {
         await execAsync(`docker image inspect ${progressTag}`)
         imageToRun = progressTag
         console.log(`Resuming from saved progress image: ${progressTag}`)
-      } catch (e) {
+      } catch {
         // Progress image doesn't exist, will use original image
       }
     }
@@ -103,7 +103,7 @@ export async function deployContainer(formData: FormData) {
       await execAsync(`docker exec -u root ${containerId} chmod -R 777 /config || true`)
       await execAsync(`docker exec -u root ${containerId} chmod -R 777 /app || true`)
       await execAsync(`docker exec -u root ${containerId} chmod -R 777 /workspace || true`)
-    } catch (permError) {
+    } catch {
       console.warn('Could not update container permissions.')
     }
 
@@ -114,9 +114,10 @@ export async function deployContainer(formData: FormData) {
     const match = portStdout.match(/:(\d+)/)
     if (!match) throw new Error('Could not determine assigned host port from Docker')
     hostPort = match[1]
-  } catch (error: any) {
+  } catch (error) {
     console.error('Docker Error:', error)
-    redirect('/error?message=' + encodeURIComponent('Docker deployment failed: ' + (error.stderr || error.message)))
+    const message = error instanceof Error ? error.message : String(error)
+    redirect('/error?message=' + encodeURIComponent('Docker deployment failed: ' + message))
   }
 
   const portQ = encodeURIComponent(hostPort)
@@ -171,8 +172,9 @@ export async function killContainer(port: number, saveContext?: { userId: string
     await execAsync(rmCmd)
 
     return { success: true, message: `Container ${trimmedId} on port ${port} has been saved and removed.` }
-  } catch (error: any) {
+  } catch (error) {
     console.error('Docker Kill Error:', error)
-    return { success: false, message: error.stderr || error.message }
+    const message = error instanceof Error ? error.message : String(error)
+    return { success: false, message }
   }
 }

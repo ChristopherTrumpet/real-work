@@ -10,32 +10,39 @@ import {
   Info, 
   Copy, 
   Check, 
-  ExternalLink,
   ShieldCheck,
   ChevronRight
 } from 'lucide-react'
 import { publishChallenge } from '@/app/actions/publish'
 import { isContainerReady } from '@/app/actions/docker'
 import { useBuild } from '@/lib/build-context'
-import { cn } from '@/lib/utils'
 
-export default function DraftWorkspace({ post }: { post: any }) {
+interface DraftPost {
+  id: string;
+  title: string;
+  api_key: string;
+  is_draft: boolean;
+  [key: string]: any;
+}
+
+export default function DraftWorkspace({ post }: { post: DraftPost }) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { activeBuild, startTrackingBuild } = useBuild()
   
   const [port, setPort] = useState<string | null>(searchParams.get('port'))
-  const [hostname, setHostname] = useState<string>('localhost')
+  const [hostname] = useState<string>(() => typeof window !== 'undefined' ? window.location.hostname : 'localhost')
   const [isReady, setIsReady] = useState(false)
   const [containerId, setContainerId] = useState<string | null>(searchParams.get('containerId'))
   const [copied, setCopied] = useState(false)
   const [isPublishing, setIsPublishing] = useState(false)
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setHostname(window.location.hostname)
-    }
-  }, [])
+  // Sync state from active build if it finishes while we are on this page
+  // Adjusting state during render is the recommended way to handle this in React
+  if (activeBuild?.status === 'ready' && activeBuild.result?.postId === post.id) {
+    if (activeBuild.result.port !== port) setPort(activeBuild.result.port)
+    if (activeBuild.result.containerId !== containerId) setContainerId(activeBuild.result.containerId)
+  }
 
   // Poll for container readiness
   useEffect(() => {
@@ -54,7 +61,7 @@ export default function DraftWorkspace({ post }: { post: any }) {
         } else if (isMounted) {
           timeoutId = setTimeout(checkReady, 2000)
         }
-      } catch (e) {
+      } catch {
         if (isMounted) timeoutId = setTimeout(checkReady, 2000)
       }
     }
@@ -64,14 +71,6 @@ export default function DraftWorkspace({ post }: { post: any }) {
       if (timeoutId) clearTimeout(timeoutId)
     }
   }, [port, isReady])
-
-  // Sync state from active build if it finishes while we are on this page
-  useEffect(() => {
-    if (activeBuild?.status === 'ready' && activeBuild.result?.postId === post.id) {
-      setPort(activeBuild.result.port)
-      setContainerId(activeBuild.result.containerId)
-    }
-  }, [activeBuild, post.id])
 
   const handleCopyKey = () => {
     navigator.clipboard.writeText(post.api_key || '')
@@ -91,8 +90,9 @@ export default function DraftWorkspace({ post }: { post: any }) {
         startTrackingBuild(result.buildId)
         router.push('/')
       }
-    } catch (e: any) {
-      alert('Publishing failed: ' + e.message)
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e)
+      alert('Publishing failed: ' + message)
       setIsPublishing(false)
     }
   }

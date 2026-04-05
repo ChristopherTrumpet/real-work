@@ -3,21 +3,15 @@
 import React, { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { Rocket, Shield, Info, ArrowLeft } from 'lucide-react'
+import { Rocket, Shield, ArrowLeft } from 'lucide-react'
 import { isContainerReady } from '@/app/actions/docker'
 
 export default function WorkspacePage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const port = searchParams.get('port')
-  const [hostname, setHostname] = useState('localhost')
+  const [hostname] = useState(() => typeof window !== 'undefined' ? window.location.hostname : 'localhost')
   const [isReady, setIsReady] = useState(false)
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setHostname(window.location.hostname)
-    }
-  }, [])
 
   // Poll for container readiness
   useEffect(() => {

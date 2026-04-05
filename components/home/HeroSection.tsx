@@ -20,11 +20,13 @@ function HeroHeadline({ className }: { className?: string }) {
 
   useEffect(() => {
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
-    setReduced(mq.matches)
-    const on = () => setReduced(mq.matches)
+    if (mq.matches !== reduced) {
+      setReduced(mq.matches)
+    }
+    const on = (e: MediaQueryListEvent) => setReduced(e.matches)
     mq.addEventListener('change', on)
     return () => mq.removeEventListener('change', on)
-  }, [])
+  }, [reduced])
 
   useEffect(() => {
     if (reduced) return

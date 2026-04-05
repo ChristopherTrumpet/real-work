@@ -11,11 +11,21 @@ import { initBuild, appendLog, finishBuild, failBuild } from "@/lib/build-logs";
 
 const execAsync = promisify(exec);
 
+export interface BuildDraftConfig {
+  title: string;
+  description: string;
+  difficulty: string;
+  tags?: string;
+  repoUrl?: string;
+  thumbnailUrl?: string;
+  setupScript?: string;
+}
+
 /**
  * Builds and deploys a local draft container for the challenge creator.
  * Uses a single, high-performance universal base image.
  */
-export async function buildDraftContainer(config: any) {
+export async function buildDraftContainer(config: BuildDraftConfig) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -23,7 +33,7 @@ export async function buildDraftContainer(config: any) {
 
   if (!user) throw new Error("Not authenticated");
 
-  const { title, description, difficulty, tags, repoUrl, thumbnailUrl, setupScript } =
+  const { title, description, difficulty, tags, thumbnailUrl, setupScript } =
     config;
   const apiKey = crypto.randomBytes(32).toString("hex");
 
@@ -73,7 +83,7 @@ export async function buildDraftContainer(config: any) {
 async function runDraftBuildProcess(
   buildId: string,
   imageName: string,
-  config: any,
+  config: BuildDraftConfig,
   userId: string,
   apiKey: string,
   postId: string,
@@ -230,12 +240,15 @@ ENTRYPOINT ["/entrypoint.sh"]
       containerId,
       postId: postId,
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Draft Builder Error:", error);
-    failBuild(buildId, error.message || String(error));
+    const message = error instanceof Error ? error.message : String(error);
+    failBuild(buildId, message);
   } finally {
     try {
       await fs.rm(tmpDir, { recursive: true, force: true });
-    } catch (e) {}
+    } catch {
+      // Ignore cleanup errors
+    }
   }
 }

@@ -20,7 +20,7 @@ import { cn } from '@/lib/utils'
 export function BuildToaster() {
   const { activeBuild, dismissBuild } = useBuild()
   const [isExpanded, setIsExpanded] = useState(false)
-  const [now, setNow] = useState(Date.now())
+  const [now, setNow] = useState(() => Date.now())
   const logEndRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
 

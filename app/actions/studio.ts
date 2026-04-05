@@ -4,8 +4,6 @@ import { exec } from 'child_process'
 import { promisify } from 'util'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/utils/supabase/server'
-import fs from 'fs'
-import path from 'path'
 
 const execAsync = promisify(exec)
 
@@ -59,9 +57,10 @@ export async function startStudioSession() {
     const match = portStdout.match(/:(\d+)/)
     if (!match) throw new Error('Could not determine assigned host port')
     hostPort = match[1]
-  } catch (error: any) {
+  } catch (error) {
     console.error('Studio Error:', error)
-    redirect('/error?message=' + encodeURIComponent('Failed to start studio: ' + (error.stderr || error.message)))
+    const message = error instanceof Error ? error.message : String(error)
+    redirect('/error?message=' + encodeURIComponent('Failed to start studio: ' + message))
   }
 
   redirect(`/studio?port=${hostPort}&containerId=${containerId}`)
@@ -99,9 +98,10 @@ export async function publishChallenge(formData: FormData) {
 
   try {
     // ... (docker logic remains the same)
-  } catch (error: any) {
+  } catch (error) {
     console.error('Docker commit error:', error)
-    redirect('/error?message=' + encodeURIComponent('Failed to save container image: ' + (error.stderr || error.message)))
+    const message = error instanceof Error ? error.message : String(error)
+    redirect('/error?message=' + encodeURIComponent('Failed to save container image: ' + message))
   }
 
   const profileErr = await ensureAuthUserProfile(supabase, user.id)

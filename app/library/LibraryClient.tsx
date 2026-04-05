@@ -6,6 +6,14 @@ import { createClient } from '@/utils/supabase/client'
 import { ChallengeFeedCard, type ChallengeFeedItem } from '@/components/ChallengeFeedCard'
 import Link from 'next/link'
 import { escapeIlikePattern } from '@/lib/search'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { SignalLow, SignalMedium, SignalHigh } from 'lucide-react'
 
 type PostRow = ChallengeFeedItem & {
   profiles: { username: string | null; full_name: string | null; avatar_url: string | null } | null
@@ -176,32 +184,53 @@ export default function LibraryClient({ initialUserId }: { initialUserId?: strin
             <label htmlFor="lib-sort" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground">
               Sort By
             </label>
-            <select
-              id="lib-sort"
+            <Select
               value={sort}
-              onChange={(e) => setSort(e.target.value as ChallengeSort)}
-              className={selectClass}
+              onValueChange={(value) => setSort(value as ChallengeSort)}
             >
-              <option value="latest">Latest</option>
-              <option value="ranking">Top Rated</option>
-            </select>
+              <SelectTrigger id="lib-sort" className="h-10">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="latest">Latest</SelectItem>
+                <SelectItem value="ranking">Top Rated</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-1.5">
             <label htmlFor="lib-difficulty" className="block text-xs font-bold uppercase tracking-widest text-muted-foreground">
               Difficulty
             </label>
-            <select
-              id="lib-difficulty"
+            <Select
               value={difficulty}
-              onChange={(e) => setDifficulty(e.target.value as Difficulty)}
-              className={selectClass}
+              onValueChange={(value) => setDifficulty(value as Difficulty)}
             >
-              <option value="all">Any Difficulty</option>
-              <option value="easy">Easy</option>
-              <option value="medium">Medium</option>
-              <option value="hard">Hard</option>
-            </select>
+              <SelectTrigger id="lib-difficulty" className="h-10">
+                <SelectValue placeholder="Difficulty" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Any Difficulty</SelectItem>
+                <SelectItem value="easy">
+                  <div className="flex items-center gap-2">
+                    <SignalLow className="size-3.5 text-emerald-500" />
+                    <span>Easy</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="medium">
+                  <div className="flex items-center gap-2">
+                    <SignalMedium className="size-3.5 text-amber-500" />
+                    <span>Medium</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="hard">
+                  <div className="flex items-center gap-2">
+                    <SignalHigh className="size-3.5 text-rose-500" />
+                    <span>Hard</span>
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-1.5">

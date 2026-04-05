@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { deployContainer } from '@/app/actions/docker'
 import { ResetProgressButton } from './ResetProgressButton'
-import { ArrowUpRight, Star, CheckCircle2, User } from 'lucide-react'
+import { ArrowUpRight, Star, CheckCircle2, User, SignalLow, SignalMedium, SignalHigh } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 type Profile = { username: string | null; full_name: string | null; avatar_url?: string | null } | null
@@ -52,7 +52,7 @@ export function ChallengeFeedCard({
     )}>
       <div className={cn(
         "flex h-full flex-col",
-        isLg ? "sm:flex-row sm:gap-8 sm:p-7 p-5" : isSm ? "p-3" : isMd ? "p-4" : "p-5"
+        isLg ? "sm:flex-row sm:gap-8 sm:p-7 p-5" : isSm ? "p-3" : "p-5"
       )}>
         {/* Visual Preview */}
         <div className={cn(
@@ -75,10 +75,13 @@ export function ChallengeFeedCard({
           )}
           <div className={cn('absolute left-2 top-2', isSm && 'left-1.5 top-1.5')}>
             <span className={cn(
-              "inline-flex items-center rounded-full border font-bold uppercase tracking-wider backdrop-blur-md transition-colors",
+              "inline-flex items-center gap-1 rounded-full border font-bold uppercase tracking-wider backdrop-blur-md transition-colors",
               isSm ? "px-2 py-px text-[9px]" : "px-2.5 py-0.5 text-[10px]",
               diffStyles
             )}>
+              {diff === 'easy' && <SignalLow className={cn(isSm ? "size-2.5" : "size-3")} />}
+              {diff === 'medium' && <SignalMedium className={cn(isSm ? "size-2.5" : "size-3")} />}
+              {diff === 'hard' && <SignalHigh className={cn(isSm ? "size-2.5" : "size-3")} />}
               {diff}
             </span>
           </div>
@@ -101,20 +104,20 @@ export function ChallengeFeedCard({
               
               {!isSm && (
                 <p className={cn(
-                  "min-h-[1.25rem] max-w-2xl text-sm font-medium leading-relaxed text-muted-foreground",
-                  isLg ? "line-clamp-2" : (isMd ? "line-clamp-1" : "line-clamp-2")
+                  "min-h-[2.5rem] max-w-2xl text-sm font-medium leading-relaxed text-muted-foreground",
+                  "line-clamp-2"
                 )}>
                   {container.description || "\u00A0"}
                 </p>
               )}
             </div>
 
-            <div className={cn('flex flex-wrap gap-1.5 overflow-hidden', isSm ? 'h-5' : 'h-6 gap-2')}>
+            <div className={cn('flex flex-wrap items-center gap-1.5 overflow-hidden', isSm ? 'h-5' : 'h-6')}>
               {container.tags && container.tags.slice(0, isSm ? 2 : 3).map((tag: string, i: number) => (
                 <span
                   key={i}
                   className={cn(
-                    'rounded-full bg-muted/50 font-semibold text-muted-foreground/80 transition-colors hover:bg-primary/10 hover:text-primary',
+                    'inline-flex items-center rounded-full bg-muted/50 font-semibold text-muted-foreground/80 transition-colors hover:bg-primary/10 hover:text-primary',
                     isSm ? 'px-2 py-px text-[9px]' : 'px-3 py-0.5 text-[10px]'
                   )}
                 >
@@ -143,7 +146,7 @@ export function ChallengeFeedCard({
           <div className={cn(
             'flex items-center justify-between gap-3 border-t border-border/50',
             isSm ? 'mt-3 flex-col pt-3 sm:flex-row sm:items-center' : 'mt-4 gap-4 pt-4',
-            !isLg && !isSm ? 'flex-col sm:flex-row items-stretch sm:items-center' : '',
+            !isLg && !isSm ? 'flex-col sm:flex-row items-center sm:items-center' : '',
             isLg && 'flex-row'
           )}>
             <div className={cn('flex items-center', isSm ? 'gap-2' : 'gap-3')}>

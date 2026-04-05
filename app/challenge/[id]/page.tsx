@@ -5,7 +5,7 @@ import { deployContainer } from '@/app/actions/docker'
 import { CommentThread } from '@/components/CommentThread'
 import { ResetProgressButton } from '@/components/ResetProgressButton'
 import { ReadOnlyStarRating, ratingRowsToBreakdown } from '@/components/read-only-star-rating'
-import { ArrowLeft, Rocket, Play, CheckCircle2, Terminal, Globe, ShieldCheck } from 'lucide-react'
+import { ArrowLeft, Rocket, Play, CheckCircle2, Terminal, Globe, ShieldCheck, SignalLow, SignalMedium, SignalHigh } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import fs from 'fs'
@@ -134,7 +134,7 @@ export default async function ChallengePage({ params }: PageProps) {
                   </div>
                   <span
                     className={cn(
-                      "shrink-0 rounded-full border px-4 py-1.5 text-[11px] font-bold uppercase tracking-widest backdrop-blur-md",
+                      "shrink-0 rounded-full border px-4 py-1.5 text-[11px] font-bold uppercase tracking-widest backdrop-blur-md flex items-center gap-1.5",
                       post.difficulty === 'easy'
                         ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
                         : post.difficulty === 'hard'
@@ -142,6 +142,9 @@ export default async function ChallengePage({ params }: PageProps) {
                           : 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400'
                     )}
                   >
+                    {post.difficulty === 'easy' && <SignalLow className="size-3.5" />}
+                    {post.difficulty === 'medium' && <SignalMedium className="size-3.5" />}
+                    {post.difficulty === 'hard' && <SignalHigh className="size-3.5" />}
                     {post.difficulty || 'medium'}
                   </span>
                 </div>
@@ -266,10 +269,13 @@ export default async function ChallengePage({ params }: PageProps) {
                 <div className="flex items-center justify-between text-sm">
                   <span className="font-medium text-muted-foreground">Difficulty Level</span>
                   <span className={cn(
-                    "font-bold uppercase tracking-widest text-[11px]",
+                    "font-bold uppercase tracking-widest text-[11px] flex items-center gap-1.5",
                     post.difficulty === 'easy' ? 'text-emerald-500' : 
                     post.difficulty === 'hard' ? 'text-rose-500' : 'text-amber-500'
                   )}>
+                    {post.difficulty === 'easy' && <SignalLow className="size-3.5" />}
+                    {post.difficulty === 'medium' && <SignalMedium className="size-3.5" />}
+                    {post.difficulty === 'hard' && <SignalHigh className="size-3.5" />}
                     {post.difficulty || 'medium'}
                   </span>
                 </div>

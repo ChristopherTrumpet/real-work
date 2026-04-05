@@ -4,14 +4,23 @@ import React, { useState } from 'react'
 import { deployContainer } from '@/app/actions/docker'
 import { ResetProgressButton } from '@/components/ResetProgressButton'
 
+interface ChallengePost {
+  id: string;
+  content_url: string | null;
+}
+
+interface AuthenticatedUser {
+  id: string;
+}
+
 export function ChallengeActionButtons({ 
   hasSession, 
   post, 
   user 
 }: { 
   hasSession: boolean, 
-  post: any, 
-  user: any 
+  post: ChallengePost, 
+  user: AuthenticatedUser 
 }) {
   const [isDeploying, setIsDeploying] = useState(false)
 

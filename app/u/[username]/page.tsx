@@ -5,7 +5,8 @@ import DifficultyWheel from '@/components/DifficultyWheel'
 import { ContributionHeatmap } from '@/components/ContributionHeatmap'
 import { UserPublishedChallenges } from '@/components/profile/UserPublishedChallenges'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, SignalLow, SignalMedium, SignalHigh } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 type PageProps = { params: Promise<{ username: string }> }
 
@@ -191,7 +192,15 @@ export default async function PublicProfilePage({ params }: PageProps) {
                   >
                     <div className="flex items-start justify-between gap-2">
                       <span className="font-medium text-foreground">{p.title}</span>
-                      <span className="text-[10px] uppercase font-bold shrink-0 rounded-full bg-muted px-2 py-0.5 text-muted-foreground">
+                      <span className={cn(
+                        "text-[10px] uppercase font-bold shrink-0 rounded-full px-2 py-0.5 flex items-center gap-1",
+                        p.difficulty === 'easy' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' :
+                        p.difficulty === 'hard' ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400' :
+                        'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                      )}>
+                        {p.difficulty === 'easy' && <SignalLow className="size-2.5" />}
+                        {p.difficulty === 'medium' && <SignalMedium className="size-2.5" />}
+                        {p.difficulty === 'hard' && <SignalHigh className="size-2.5" />}
                         {p.difficulty || 'medium'}
                       </span>
                     </div>

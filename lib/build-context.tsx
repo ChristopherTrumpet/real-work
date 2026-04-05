@@ -20,8 +20,7 @@ const BuildContext = createContext<BuildContextType | undefined>(undefined)
 
 export function BuildProvider({ children }: { children: React.ReactNode }) {
   const [activeBuild, setActiveBuild] = useState<BuildStatus | null>(null)
-  const [now, setNow] = useState(Date.now())
-  const router = useRouter()
+  const [now, setNow] = useState(() => Date.now())
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {

@@ -5,6 +5,14 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/utils/supabase/client'
 import { escapeIlikePattern } from '@/lib/search'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { SignalLow, SignalMedium, SignalHigh } from 'lucide-react'
 
 type Scope = 'all' | 'profiles' | 'challenges'
 type Difficulty = 'all' | 'easy' | 'medium' | 'hard'
@@ -185,16 +193,19 @@ export default function SearchClient() {
             <label htmlFor="search-scope" className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Show
             </label>
-            <select
-              id="search-scope"
+            <Select
               value={scope}
-              onChange={(e) => setScope(e.target.value as Scope)}
-              className={selectClass}
+              onValueChange={(value) => setScope(value as Scope)}
             >
-              <option value="all">All</option>
-              <option value="profiles">Profiles</option>
-              <option value="challenges">Challenges</option>
-            </select>
+              <SelectTrigger id="search-scope" className="h-10">
+                <SelectValue placeholder="Select scope" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="profiles">Profiles</SelectItem>
+                <SelectItem value="challenges">Challenges</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {showChallengeFilters && (
@@ -203,32 +214,54 @@ export default function SearchClient() {
                 <label htmlFor="search-sort" className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Sort
                 </label>
-                <select
-                  id="search-sort"
+                <Select
                   value={sort}
-                  onChange={(e) => setSort(e.target.value as ChallengeSort)}
-                  className={selectClass}
+                  onValueChange={(value) => setSort(value as ChallengeSort)}
                 >
-                  <option value="latest">Latest</option>
-                  <option value="ranking">Ranking</option>
-                </select>
+                  <SelectTrigger id="search-sort" className="h-10">
+                    <SelectValue placeholder="Sort by" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="latest">Latest</SelectItem>
+                    <SelectItem value="ranking">Ranking</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-1.5">
                 <label htmlFor="search-difficulty" className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Difficulty
                 </label>
-                <select
-                  id="search-difficulty"
+                <Select
                   value={difficulty}
-                  onChange={(e) => setDifficulty(e.target.value as Difficulty)}
-                  className={selectClass}
+                  onValueChange={(value) => setDifficulty(value as Difficulty)}
                 >
-                  <option value="all">Any</option>
-                  <option value="easy">Easy</option>
-                  <option value="medium">Medium</option>
-                  <option value="hard">Hard</option>
-                </select>
+                  <SelectTrigger id="search-difficulty" className="h-10">
+                    <SelectValue placeholder="Difficulty" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Any</SelectItem>
+                    <SelectItem value="easy">
+                      <div className="flex items-center gap-2">
+                        <SignalLow className="size-3.5 text-emerald-500" />
+                        <span>Easy</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="medium">
+                      <div className="flex items-center gap-2">
+                        <SignalMedium className="size-3.5 text-amber-500" />
+                        <span>Medium</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="hard">
+                      <div className="flex items-center gap-2">
+                        <SignalHigh className="size-3.5 text-rose-500" />
+                        <span>Hard</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+
+                </Select>
               </div>
 
               <div className="space-y-1.5 sm:col-span-2 lg:col-span-1">
@@ -319,7 +352,15 @@ export default function SearchClient() {
                       >
                         <div className="flex items-start justify-between gap-2">
                           <span className="font-medium text-foreground">{c.title}</span>
-                          <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold text-muted-foreground uppercase">
+                          <span className={cn(
+                            "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase flex items-center gap-1",
+                            c.difficulty === 'easy' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' :
+                            c.difficulty === 'hard' ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400' :
+                            'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                          )}>
+                            {c.difficulty === 'easy' && <SignalLow className="size-2.5" />}
+                            {c.difficulty === 'medium' && <SignalMedium className="size-2.5" />}
+                            {c.difficulty === 'hard' && <SignalHigh className="size-2.5" />}
                             {c.difficulty || 'medium'}
                           </span>
                         </div>

@@ -2,6 +2,26 @@
 
 import { createClient } from '@/utils/supabase/server'
 
+interface GitHubRepo {
+  id: number;
+  name: string;
+  full_name: string;
+  description: string | null;
+  html_url: string;
+  private: boolean;
+  default_branch: string;
+  clone_url: string;
+}
+
+interface GitHubTreeItem {
+  path: string;
+  mode: string;
+  type: string;
+  sha: string;
+  size?: number;
+  url: string;
+}
+
 export async function fetchGitHubRepos(usernameOrUrl?: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -12,7 +32,7 @@ export async function fetchGitHubRepos(usernameOrUrl?: string) {
   const { data: sessionData } = await supabase.auth.getSession()
   const providerToken = sessionData.session?.provider_token
 
-  let repos: any[] = []
+  let repos: GitHubRepo[] = []
   
   if (usernameOrUrl) {
     // If user provided a specific URL or username, parse it
@@ -75,7 +95,7 @@ export async function fetchGitHubRepos(usernameOrUrl?: string) {
     console.warn('No repositories found for this account.')
   }
 
-  return repos.map((r: any) => ({
+  return repos.map((r) => ({
     id: r.id,
     name: r.name,
     full_name: r.full_name,
@@ -99,7 +119,7 @@ export async function fetchRepoTree(fullName: string, branch: string) {
   if (!res.ok) throw new Error('Failed to fetch repository tree')
   
   const data = await res.json()
-  return data.tree.filter((item: any) => item.type === 'blob') // Only return files
+  return data.tree.filter((item: GitHubTreeItem) => item.type === 'blob') // Only return files
 }
 
 export async function fetchFileContent(fullName: string, path: string) {

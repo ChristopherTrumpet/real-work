@@ -10,6 +10,22 @@ import { submitCompletion } from '@/app/actions/preview'
 import { evaluateChallengeAction } from '@/app/actions/benchmark'
 import { BenchmarkResult } from '@/lib/evaluator'
 import BenchmarkResults from '@/components/BenchmarkResults'
+import { SignalLow, SignalMedium, SignalHigh } from 'lucide-react'
+import { cn } from '@/lib/utils'
+
+interface WorkspacePost {
+  id: string;
+  title: string;
+  difficulty: string | null;
+  description: string | null;
+  benchmark_gold_code: string | null;
+  benchmark_test_cases: any; // JSON from DB
+  benchmark_language: string | null;
+  benchmark_timeout_ms: number | null;
+  average_rating: number | null;
+  ratings_count: number | null;
+  profiles: { username: string | null } | null;
+}
 
 export default function PreviewWorkspace({
   post,
@@ -18,7 +34,7 @@ export default function PreviewWorkspace({
   canDiscuss = false,
   basePath = '/preview',
 }: {
-  post?: any
+  post?: WorkspacePost
   comments?: any[]
   currentUserId?: string | null
   /** True when the user has completed this challenge (can post and reply in the sidebar). */
@@ -146,8 +162,9 @@ export default function PreviewWorkspace({
       })
       
       setBenchmarkResult(result)
-    } catch (e: any) {
-      alert('Evaluation failed: ' + e.message)
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e)
+      alert('Evaluation failed: ' + message)
     } finally {
       setIsEvaluating(false)
     }
@@ -225,21 +242,26 @@ export default function PreviewWorkspace({
               <div className="flex items-center gap-2 mb-2">
                 <h2 className="text-2xl font-bold">{post.title}</h2>
               </div>
-              
               <div className="flex flex-wrap gap-2 mb-4">
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
+                <span className={cn(
+                  "text-[10px] font-bold px-2 py-0.5 rounded-full uppercase flex items-center gap-1",
                   post.difficulty === 'easy' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
                   post.difficulty === 'hard' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
                   'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
-                }`}>
+                )}>
+                  {post.difficulty === 'easy' && <SignalLow className="size-3" />}
+                  {post.difficulty === 'medium' && <SignalMedium className="size-3" />}
+                  {post.difficulty === 'hard' && <SignalHigh className="size-3" />}
                   {post.difficulty || 'medium'}
                 </span>
-                <span className="text-xs text-zinc-500 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full flex items-center gap-1">
-                   By {post.profiles?.username || 'Unknown'}
-                </span>
               </div>
-              
-              <div className="prose dark:prose-invert text-sm text-zinc-600 dark:text-zinc-400 mb-6 whitespace-pre-wrap">
+<span className="text-xs text-zinc-500 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full flex items-center gap-1">
+   By {post.profiles?.username || 'Unknown'}
+</span>
+</div>
+
+<div className="prose dark:prose-invert text-sm text-zinc-600 dark:text-zinc-400 mb-6 whitespace-pre-wrap">
+
                 {post.description}
               </div>
 
@@ -270,7 +292,6 @@ export default function PreviewWorkspace({
                   it once, you can also discuss with other solvers here and on the challenge page.
                 </p>
               </div>
-            </div>
 
             <div className="mt-4 border-t border-zinc-200 pt-6 dark:border-zinc-800">
               <ReadOnlyStarRating

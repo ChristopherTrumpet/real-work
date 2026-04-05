@@ -154,7 +154,7 @@ export default async function Home() {
             </div>
           )}
 
-          <div className="mx-auto grid max-w-4xl grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-5">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:gap-8">
             {list.length > 0 ? (
               list.map((container, i) => (
                 <div key={container.id} className="animate-fade-up" style={{ '--stagger': i * 0.1 } as React.CSSProperties}>
@@ -162,7 +162,7 @@ export default async function Home() {
                     container={container}
                     userId={user?.id}
                     hasSession={activeSessions.has(container.id)}
-                    size="sm"
+                    size="md"
                   />
                 </div>
               ))
