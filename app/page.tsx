@@ -14,12 +14,24 @@ export default async function Home() {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const { data: containers, error: fetchError } = await supabase
+  // Fetch all for metrics
+  const { data: allPosts } = await supabase
+    .from('posts')
+    .select('id, user_id, number_of_completions')
+
+  const totalChallenges = allPosts?.length ?? 0
+  const totalCompletions = allPosts?.reduce((acc, c) => acc + (c.number_of_completions ?? 0), 0) ?? 0
+  const contributorCount = new Set(allPosts?.map((c) => c.user_id as string).filter(Boolean)).size
+
+  // Fetch top 5 by rating
+  const { data: topChallenges, error: fetchError } = await supabase
     .from('posts')
     .select('*, profiles!user_id(username, full_name)')
-    .order('created_at', { ascending: false })
+    .order('average_rating', { ascending: false, nullsFirst: false })
+    .order('ratings_count', { ascending: false })
+    .limit(5)
 
-  const list = (containers ?? []) as ChallengeFeedItem[]
+  const list = (topChallenges ?? []) as ChallengeFeedItem[]
 
   const activeSessions = new Set<string>()
   if (user && list.length) {
@@ -31,24 +43,19 @@ export default async function Home() {
     })
   }
 
-  const totalChallenges = list.length
-  const libraryPreview = list.slice(0, 6)
-  const totalCompletions = list.reduce((acc, c) => acc + (c.number_of_completions ?? 0), 0)
-  const contributorCount = new Set(list.map((c) => c.user_id as string).filter(Boolean)).size
-
   return (
     <div className="min-h-screen bg-background">
       <HeroSection>
         <p className="mx-auto mt-5 max-w-2xl text-center text-base leading-relaxed text-muted-foreground sm:mx-0 sm:text-left sm:text-lg">
-          Browse community challenges, launch isolated workspaces, and track progress—all from one place.
+          Master modern engineering through hands-on challenges. Explore real-world scenarios, debug in isolated containers, and level up your skills with community-rated content.
         </p>
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row sm:flex-wrap sm:justify-start">
-          <a
-            href="#library"
+          <Link
+            href="/library"
             className="inline-flex h-11 w-full items-center justify-center rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 sm:w-auto"
           >
             Explore library
-          </a>
+          </Link>
           {user ? (
             <Link
               href="/new"
@@ -82,7 +89,7 @@ export default async function Home() {
           </div>
           <div className="bg-background px-6 py-8 text-center sm:text-left">
             <p className="text-3xl font-semibold tabular-nums text-foreground md:text-4xl">{contributorCount}</p>
-            <p className="mt-1 text-sm font-medium text-muted-foreground">Contributors</p>
+            <p className="mt-1 text-sm font-medium text-muted-foreground">Active contributors</p>
           </div>
         </div>
       </section>
@@ -91,23 +98,18 @@ export default async function Home() {
         <div id="library" className="scroll-mt-24">
           <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h2 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">Challenge library</h2>
+              <h2 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">Top Rated Challenges</h2>
               <p className="mt-2 max-w-xl text-sm text-muted-foreground md:text-base">
-                Curated containers you can open instantly. Each challenge runs in its own environment on your machine.
+                The community&apos;s favorite hands-on labs. High-quality environments designed to test your real-world skills.
               </p>
             </div>
             <div className="flex flex-col items-start gap-3 sm:items-end">
-              <p className="text-sm text-muted-foreground">
-                <span className="font-semibold tabular-nums text-foreground">{totalChallenges}</span> available
-              </p>
-              {totalChallenges > 6 && (
-                <Link
-                  href="/search"
-                  className="inline-flex h-10 items-center justify-center rounded-full border border-border bg-background px-5 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-muted"
-                >
-                  View more
-                </Link>
-              )}
+              <Link
+                href="/library"
+                className="inline-flex h-10 items-center justify-center rounded-full border border-border bg-background px-5 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-muted"
+              >
+                View all challenges
+              </Link>
             </div>
           </div>
 
@@ -118,8 +120,8 @@ export default async function Home() {
           )}
 
           <div className="flex flex-col gap-5">
-            {libraryPreview.length > 0 ? (
-              libraryPreview.map((container) => (
+            {list.length > 0 ? (
+              list.map((container) => (
                 <ChallengeFeedCard
                   key={container.id}
                   container={container}
@@ -129,19 +131,16 @@ export default async function Home() {
               ))
             ) : (
               <div className="rounded-2xl border border-dashed border-border bg-muted/20 px-8 py-20 text-center">
-                <p className="text-base font-medium text-foreground">The library is empty</p>
+                <p className="text-base font-medium text-foreground">No highly-rated challenges yet</p>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Add rows to your <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">posts</code> table
-                  in Supabase, or sign in to publish a challenge.
+                  Check back soon or explore the full library to find something new.
                 </p>
-                {!user && (
-                  <Link
-                    href="/login"
-                    className="mt-6 inline-flex h-10 items-center justify-center rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground"
-                  >
-                    Sign in
-                  </Link>
-                )}
+                <Link
+                  href="/library"
+                  className="mt-6 inline-flex h-10 items-center justify-center rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground"
+                >
+                  Go to Library
+                </Link>
               </div>
             )}
           </div>

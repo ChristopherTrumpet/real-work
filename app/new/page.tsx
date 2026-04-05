@@ -55,8 +55,55 @@ export default function NewChallengeWizard() {
     tags: '',
     description: '',
     testCases: '["1", "2"]',
-    timeout: '10000'
+    timeout: '10000',
+    thumbnailUrl: ''
   })
+
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null)
+  const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null)
+  const [isUploadingThumbnail, setIsUploadingThumbnail] = useState(false)
+
+  const handleThumbnailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      setThumbnailFile(file)
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setThumbnailPreview(reader.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const uploadThumbnail = async (): Promise<string | null> => {
+    if (!thumbnailFile) return null
+    setIsUploadingThumbnail(true)
+    try {
+      const { createClient } = await import('@/utils/supabase/client')
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Not authenticated')
+
+      const fileExt = thumbnailFile.name.split('.').pop()
+      const fileName = `${user.id}/${Date.now()}.${fileExt}`
+      const { data, error } = await supabase.storage
+        .from('thumbnails')
+        .upload(fileName, thumbnailFile)
+
+      if (error) throw error
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('thumbnails')
+        .getPublicUrl(fileName)
+
+      return publicUrl
+    } catch (e: any) {
+      alert('Thumbnail upload failed: ' + e.message)
+      return null
+    } finally {
+      setIsUploadingThumbnail(false)
+    }
+  }
 
   const [isGitHubLinked, setIsGitHubLinked] = useState(false)
 
@@ -144,12 +191,18 @@ export default function NewChallengeWizard() {
   const handleDeploy = async () => {
     setIsDeploying(true)
     try {
+      let finalThumbnailUrl = details.thumbnailUrl
+      if (thumbnailFile) {
+        const uploadedUrl = await uploadThumbnail()
+        if (uploadedUrl) finalThumbnailUrl = uploadedUrl
+      }
+
       const result = await buildChallengeContainer({
         repoUrl: selectedRepo.clone_url,
         templateId: selectedTemplate.id,
         benchmarkLang: selectedTemplate.lang,
         goldCode,
-        details
+        details: { ...details, thumbnailUrl: finalThumbnailUrl }
       })
       
       if (result.success && result.buildId) {
@@ -397,6 +450,41 @@ export default function NewChallengeWizard() {
                     onChange={e => setDetails({...details, tags: e.target.value})}
                     className="w-full h-10 border border-input rounded-lg bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-primary/20" 
                   />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-semibold">Challenge Thumbnail</label>
+                <div className="flex flex-col gap-4">
+                  {thumbnailPreview && (
+                    <div className="relative aspect-video w-full max-w-sm overflow-hidden rounded-lg border border-border bg-muted">
+                      <img src={thumbnailPreview} alt="Thumbnail preview" className="h-full w-full object-cover" />
+                      <button 
+                        onClick={() => { setThumbnailFile(null); setThumbnailPreview(null); }}
+                        className="absolute right-2 top-2 rounded-full bg-black/50 p-1 text-white hover:bg-black/70"
+                      >
+                        <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-3">
+                    <input 
+                      type="file" 
+                      accept="image/*"
+                      onChange={handleThumbnailChange}
+                      className="hidden" 
+                      id="thumbnail-upload"
+                    />
+                    <label 
+                      htmlFor="thumbnail-upload"
+                      className="inline-flex h-10 cursor-pointer items-center justify-center rounded-lg border border-input bg-background px-4 text-sm font-medium transition-colors hover:bg-muted"
+                    >
+                      {thumbnailPreview ? 'Change Image' : 'Upload Thumbnail'}
+                    </label>
+                    <p className="text-xs text-muted-foreground italic">Recommended: 1280x720 (16:9)</p>
+                  </div>
                 </div>
               </div>
 
