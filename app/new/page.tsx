@@ -47,19 +47,20 @@ export default function NewChallengePage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isSourceExpanded, setIsSourceExpanded] = useState(false)
 
+  const loadRepos = async () => {
+    setIsLoadingRepos(true)
+    try {
+      const data = await fetchGitHubRepos()
+      setRepos(data)
+    } catch (e) {
+      console.error('Failed to load repos:', e)
+    } finally {
+      setIsLoadingRepos(false)
+    }
+  }
+
   useEffect(() => {
     if (isModalOpen && repos.length === 0) {
-      const loadRepos = async () => {
-        setIsLoadingRepos(true)
-        try {
-          const data = await fetchGitHubRepos()
-          setRepos(data)
-        } catch (e) {
-          console.error('Failed to load repos:', e)
-        } finally {
-          setIsLoadingRepos(false)
-        }
-      }
       loadRepos()
     }
   }, [isModalOpen, repos.length])
@@ -423,7 +424,13 @@ export default function NewChallengePage() {
                 </div>
                 <div>
                   <h2 className="text-2xl font-black tracking-tight text-foreground uppercase tracking-widest">Connect Repository</h2>
-                  <p className="text-xs text-muted-foreground font-bold mt-1 uppercase tracking-widest opacity-60">Source Code Integration</p>
+                  <button 
+                    onClick={loadRepos}
+                    disabled={isLoadingRepos}
+                    className="text-[10px] font-bold text-primary hover:underline uppercase tracking-widest flex items-center gap-1 mt-1 disabled:opacity-50"
+                  >
+                    {isLoadingRepos ? 'Syncing...' : 'Refresh List'}
+                  </button>
                 </div>
               </div>
               <button 

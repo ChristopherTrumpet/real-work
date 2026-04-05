@@ -123,9 +123,9 @@ export async function deployContainer(formData: FormData) {
   const cidQ = encodeURIComponent(containerId)
 
   if (postId) {
-    redirect(`/studio?port=${portQ}&containerId=${cidQ}&postId=${encodeURIComponent(postId)}`)
+    redirect(`/workspace?port=${portQ}&containerId=${cidQ}&postId=${encodeURIComponent(postId)}`)
   } else {
-    redirect(`/studio?port=${portQ}&containerId=${cidQ}`)
+    redirect(`/workspace?port=${portQ}&containerId=${cidQ}`)
   }
 }
 
