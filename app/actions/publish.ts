@@ -8,8 +8,12 @@ import { initBuild, appendLog, finishBuild, failBuild } from '@/lib/build-logs'
 const execAsync = promisify(exec)
 
 /**
- * Captures the state of a draft container using 'docker commit' and pushes it to the cloud registry.
- * This creates a perfect "clone" of the creator's workspace, preserving all manual changes.
+ * Captures the state of a draft container using `docker commit` and pushes it to the cloud registry.
+ * This preserves the creator's workspace as a runnable image for solvers.
+ *
+ * Ops: the registry host must be listed under Docker Engine `insecure-registries` if it uses HTTP
+ * (e.g. `"insecure-registries": ["150.136.116.136:5000"]`). Large desktop-base images can take
+ * many minutes to commit and push; progress appears as `docker push` layer lines in the build log.
  */
 export async function publishChallenge(postId: string, containerId: string) {
   const supabase = await createClient()
@@ -33,41 +37,47 @@ async function runPublishProcess(buildId: string, postId: string, containerId: s
   const supabase = await createClient()
 
   try {
-    appendLog(buildId, `Capturing manual changes (cloning workspace)...`, true)
-    
-    // 1. Core "Clone" Command: Commit to a unique local tag
-    // We use a unique local tag to ensure buildx doesn't try to pull the image from the registry
+    appendLog(
+      buildId,
+      `Capturing container filesystem (docker commit). This can take several minutes for large images…`,
+      true
+    )
+
     const localSnapshotTag = `local-capture-${postId}`
-    await execAsync(`docker commit ${containerId} ${localSnapshotTag}`)
+    await execAsync(`docker commit ${containerId} ${localSnapshotTag}`, {
+      maxBuffer: 50 * 1024 * 1024,
+    })
     appendLog(buildId, `Workspace snapshot captured successfully.`)
 
-    // 2. Push to the cloud registry using buildx
-    // We use buildx build with a simple FROM to handle the insecure registry synchronization.
-    // This is the "specific clause" needed for HTTP registries.
-    appendLog(buildId, `Synchronizing snapshot to cloud registry...`, true)
-    
-    await new Promise((resolve, reject) => {
-      const child = spawn('docker', [
-        'buildx', 'build',
-        '--push',
-        '--tag', imageName,
-        '--output', 'registry.insecure=true',
-        '-' // Read Dockerfile from stdin
-      ])
-      
-      // Inherit from the local snapshot we just created
-      child.stdin.write(`FROM ${localSnapshotTag}`)
-      child.stdin.end()
-      
-      child.stdout.on('data', (data) => appendLog(buildId, `[cloud] ${data.toString().trim()}`))
-      child.stderr.on('data', (data) => {
-        const msg = data.toString().trim()
-        if (msg) appendLog(buildId, `[cloud-log] ${msg}`)
-      })
-      
+    appendLog(buildId, `Tagging image for registry…`, true)
+    await execAsync(`docker tag ${localSnapshotTag} ${imageName}`)
+
+    // `docker push` gives steadier progress than buildx for a pre-built image; buildx was also fed
+    // an invalid `--output registry.insecure=true` (not a valid type=… spec), which could confuse BuildKit.
+    appendLog(
+      buildId,
+      `Pushing to registry (copying layers / blobs — often looks “stuck” during multi‑GB uploads; wait for completion)…`,
+      true
+    )
+
+    await new Promise<void>((resolve, reject) => {
+      const child = spawn('docker', ['push', imageName])
+
+      const forward = (chunk: Buffer, prefix: string) => {
+        const text = chunk.toString()
+        for (const line of text.split(/\r?\n/)) {
+          const msg = line.trim()
+          if (msg) appendLog(buildId, `${prefix}${msg}`)
+        }
+      }
+
+      child.stdout.on('data', (data) => forward(data, '[push] '))
+      child.stderr.on('data', (data) => forward(data, '[push] '))
+
+      child.on('error', (err) => reject(err))
       child.on('close', (code) => {
-        if (code === 0) resolve(true)
-        else reject(new Error(`Cloud synchronization failed with code ${code}.`))
+        if (code === 0) resolve()
+        else reject(new Error(`Registry push failed with exit code ${code}.`))
       })
     })
 
