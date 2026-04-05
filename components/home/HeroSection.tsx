@@ -58,7 +58,7 @@ export function HeroSection({ children }: HeroSectionProps) {
     let phraseI = 0
     let chars = 0
     let phase: 'typing' | 'pause' | 'deleting' = 'typing'
-    let timeoutId: ReturnType<typeof setTimeout> | undefined = undefined
+    let timeoutId: any = undefined
 
     const phrase = () => HERO_HEADLINES[phraseI % HERO_HEADLINES.length]
 

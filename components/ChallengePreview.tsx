@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Rocket, ExternalLink, GitBranch, CheckCircle2, AlertCircle, Info, Code, Play, Trash2 } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { BenchmarkResult } from '@/lib/evaluator'
 import BenchmarkResults from '@/components/BenchmarkResults'
 import { evaluateChallengeAction } from '@/app/actions/benchmark'
@@ -279,6 +280,12 @@ export default function ChallengePreview({ post, currentUserId }: { post: any, c
               Benchmark Specs
             </h3>
             <div className="space-y-3">
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">Source</span>
+                <span className={cn("font-mono font-bold", post.content_url?.startsWith('150.136.116.136:5000') ? "text-blue-500" : "text-zinc-500")}>
+                  {post.content_url?.startsWith('150.136.116.136:5000') ? 'Cloud Registry' : 'Local Image'}
+                </span>
+              </div>
               <div className="flex justify-between text-xs">
                 <span className="text-muted-foreground">Evaluator</span>
                 <span className="font-mono">python-runner v2</span>

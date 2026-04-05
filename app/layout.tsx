@@ -4,6 +4,8 @@ import "./globals.css";
 import { cn } from "@/lib/utils";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SiteHeader } from "@/components/site-header";
+import { BuildProvider } from "@/lib/build-context";
+import { BuildToaster } from "@/components/BuildToaster";
 
 const inter = Inter({subsets:['latin'],variable:'--font-sans'});
 
@@ -35,8 +37,11 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
         <ThemeProvider>
-          <SiteHeader />
-          <div className="flex-1">{children}</div>
+          <BuildProvider>
+            <SiteHeader />
+            <div className="flex-1">{children}</div>
+            <BuildToaster />
+          </BuildProvider>
         </ThemeProvider>
       </body>
     </html>
