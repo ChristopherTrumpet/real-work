@@ -2,6 +2,8 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/utils/supabase/server'
 import DifficultyWheel from '@/components/DifficultyWheel'
+import { ContributionHeatmap } from '@/components/ContributionHeatmap'
+import { UserPublishedChallenges } from '@/components/profile/UserPublishedChallenges'
 
 type PageProps = { params: Promise<{ username: string }> }
 
@@ -20,11 +22,25 @@ export default async function PublicProfilePage({ params }: PageProps) {
     notFound()
   }
 
-  const { data: posts } = await supabase
+  // Fetch initial posts for activity and list
+  const { data: initialPosts } = await supabase
     .from('posts')
-    .select('id, title, description, difficulty, tags, number_of_completions, average_rating, ratings_count, created_at')
+    .select('id, title, description, difficulty, tags, number_of_completions, average_rating, ratings_count, created_at, user_id')
     .eq('user_id', profile.id)
     .order('created_at', { ascending: false })
+    .range(0, 9) // Fetch first PAGE_SIZE (10)
+
+  // Fetch all posts for activity map (we need all timestamps, not paginated)
+  const { data: allPosts } = await supabase
+    .from('posts')
+    .select('created_at')
+    .eq('user_id', profile.id)
+
+  // Fetch completions for activity
+  const { data: completions } = await supabase
+    .from('user_completions')
+    .select('completed_at')
+    .eq('user_id', profile.id)
 
   const { data: probStats } = await supabase
     .from('user_problem_statistics')
@@ -38,12 +54,30 @@ export default async function PublicProfilePage({ params }: PageProps) {
     .eq('user_id', profile.id)
     .maybeSingle()
 
-  const list = posts ?? []
+  const list = initialPosts ?? []
   const createdEasy = list.filter((p) => p.difficulty === 'easy').length
   const createdMed = list.filter((p) => p.difficulty === 'medium').length
   const createdHard = list.filter((p) => p.difficulty === 'hard').length
 
   const isOwn = currentUser?.id === profile.id
+
+  // Process activity data for heatmap
+  const activityMap = new Map<string, number>()
+  
+  allPosts?.forEach(p => {
+    const date = new Date(p.created_at).toISOString().split('T')[0]
+    activityMap.set(date, (activityMap.get(date) || 0) + 1)
+  })
+  
+  completions?.forEach(c => {
+    const date = new Date(c.completed_at).toISOString().split('T')[0]
+    activityMap.set(date, (activityMap.get(date) || 0) + 1)
+  })
+
+  const heatmapData = Array.from(activityMap.entries()).map(([date, count]) => ({
+    date,
+    count
+  }))
 
   return (
     <div className="min-h-screen bg-background pb-12">
@@ -52,7 +86,7 @@ export default async function PublicProfilePage({ params }: PageProps) {
           ← Return Home
         </Link>
 
-        <div className="mb-8 flex flex-col sm:flex-row sm:items-start justify-between gap-6">
+        <div className="mb-10 flex flex-col sm:flex-row sm:items-start justify-between gap-6">
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
             <div className="size-24 sm:size-32 shrink-0 overflow-hidden rounded-full border-2 border-border bg-muted flex items-center justify-center">
               {profile.avatar_url ? (
@@ -123,6 +157,11 @@ export default async function PublicProfilePage({ params }: PageProps) {
               )}
             </dl>
           </section>
+        </div>
+
+        {/* Heatmap section */}
+        <div className="mb-12">
+          <ContributionHeatmap data={heatmapData} username={profile.username || ''} />
         </div>
 
         <section>
