@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import { createClient } from '@/utils/supabase/server'
 import { deployContainer } from '@/app/actions/docker'
 import { CommentThread } from '@/components/CommentThread'
-import { ChallengeActionButtons } from '@/components/ChallengeActionButtons'
+import { ResetProgressButton } from '@/components/ResetProgressButton'
 import { ReadOnlyStarRating, ratingRowsToBreakdown } from '@/components/read-only-star-rating'
 import { ArrowLeft, Rocket, Play, CheckCircle2, Terminal, Globe, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -166,7 +166,15 @@ export default async function ChallengePage({ params }: PageProps) {
 
                 {user && (
                   <div className="mt-10 flex flex-col gap-6 border-t border-border/50 pt-10 sm:flex-row sm:items-center">
-                    <div className="flex flex-1 flex-wrap items-center gap-4">
+                    <div className="flex flex-1 flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center">
+                      {userCompletion ? (
+                        <Button asChild size="lg" variant="secondary" className="h-12 px-6 font-bold">
+                          <Link href={`/challenge/${post.id}/complete`}>
+                            <CheckCircle2 className="mr-2 size-5 text-emerald-600 dark:text-emerald-400" />
+                            Rating &amp; feedback
+                          </Link>
+                        </Button>
+                      ) : null}
                       {hasSession ? (
                         <div className="flex flex-wrap items-center gap-3">
                           <form action={deployContainer}>

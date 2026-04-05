@@ -1,14 +1,11 @@
 import Link from 'next/link'
-import { createClient } from '@/utils/supabase/server'
+import { getServerSupabaseUser } from '@/utils/supabase/cached-session'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { HeaderUserMenu } from '@/components/header-user-menu'
 import { HeaderMaxWidthContainer } from '@/components/header-max-width-container'
 
 export async function SiteHeader() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { supabase, user } = await getServerSupabaseUser()
 
   const { data: profile } = user
     ? await supabase

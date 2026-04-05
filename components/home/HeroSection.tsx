@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils'
 /** Hero cycles through these with a crossfade (no typing). */
 export const HERO_HEADLINES = [
   'Ship real software in live environments.',
-  'Solve problems where they actually occur.',
+  'Solving problems where they actually occur.',
   'Master distributed systems by breaking them.',
   'Debug production-grade containers.',
   'Level up with community-rated engineering labs.',
