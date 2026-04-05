@@ -63,11 +63,19 @@ export default function PreviewWorkspace({
   useEffect(() => {
     if (!post?.id || isCompletingSession) return
     
-    console.log(`[preview] Subscribing to completions for post ${post.id}`);
+    let user: any = null
     const supabase = createClient()
     
+    // Fetch user once to avoid calling it in the callback
+    supabase.auth.getUser().then(({ data }) => {
+      user = data.user
+      console.log(`[preview] Active user for realtime:`, user?.id);
+    })
+
+    console.log(`[preview] Subscribing to completions for post ${post.id}`);
+    
     const channel = supabase
-      .channel(`completion-detect-${post.id}`)
+      .channel(`completion-${post.id}`)
       .on(
         'postgres_changes',
         {
@@ -76,11 +84,9 @@ export default function PreviewWorkspace({
           table: 'user_completions',
           filter: `post_id=eq.${post.id}`
         },
-        async (payload) => {
+        (payload) => {
           console.log(`[preview] Completion detected in DB:`, payload.new);
-          // Verify it's the current user
-          const { data: { user } } = await supabase.auth.getUser()
-          if (payload.new.user_id === user?.id && !isCompletingSession) {
+          if (user && payload.new.user_id === user.id && !isCompletingSession) {
             console.log(`[preview] Matching user completion found. Redirecting...`);
             setIsCompletingSession(true)
             router.push(`/challenge/${post.id}/complete`)

@@ -20,11 +20,19 @@ export default function WorkspacePage() {
   useEffect(() => {
     if (!postId) return
     
-    console.log(`[workspace] Subscribing to completions for post ${postId}`);
+    let user: any = null
     const supabase = createClient()
     
+    // Fetch user once to avoid calling it in the callback
+    supabase.auth.getUser().then(({ data }) => {
+      user = data.user
+      console.log(`[workspace] Active user for realtime:`, user?.id);
+    })
+
+    console.log(`[workspace] Subscribing to completions for post ${postId}`);
+    
     const channel = supabase
-      .channel('completion-detect')
+      .channel(`completion-${postId}`)
       .on(
         'postgres_changes',
         {
@@ -33,11 +41,9 @@ export default function WorkspacePage() {
           table: 'user_completions',
           filter: `post_id=eq.${postId}`
         },
-        async (payload) => {
+        (payload) => {
           console.log(`[workspace] Completion detected in DB:`, payload.new);
-          // Verify it's the current user
-          const { data: { user } } = await supabase.auth.getUser()
-          if (payload.new.user_id === user?.id && !isCompleting) {
+          if (user && payload.new.user_id === user.id && !isCompleting) {
             console.log(`[workspace] Matching user completion found. Redirecting...`);
             setIsCompleting(true)
             router.push(`/challenge/${postId}/complete`)

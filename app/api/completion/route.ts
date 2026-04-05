@@ -9,23 +9,6 @@ const execAsync = promisify(exec);
 
 /**
  * Record a challenge completion for the authenticated user.
- *
- * curl example (replace URL, token, and post UUID):
- *
- * ```bash
- * curl -sS -X POST "http://localhost:3000/api/completion" \
- *   -H "Authorization: Bearer YOUR_SUPABASE_ACCESS_TOKEN" \
- *   -H "Content-Type: application/json" \
- *   -d '{"postId":"00000000-0000-0000-0000-000000000000"}'
- * ```
- *
- * The access token is the same JWT from `supabase.auth.getSession()` (or the
- * `access_token` field after password / OAuth sign-in). RLS requires the token
- * subject to match the row’s `user_id`.
- *
- * Challenge containers started via `deployContainer` / draft builder / studio also receive:
- * - `REALWORK_SUPABASE_ACCESS_TOKEN` — raw JWT (use as `Authorization: Bearer <token>`)
- * - `REALWORK_POST_ID` — UUID string (omit on generic studio sessions without a post)
  */
 
 function supabaseForRequest(accessToken: string) {
@@ -41,17 +24,17 @@ function supabaseForRequest(accessToken: string) {
 }
 
 export async function POST(request: NextRequest) {
+  console.log(`[api/completion] Received request at ${new Date().toISOString()}`);
+  
   const authHeader = request.headers.get("authorization");
   const token = authHeader?.startsWith("Bearer ")
     ? authHeader.slice(7).trim()
     : null;
 
   if (!token) {
+    console.error("[api/completion] Missing Authorization header");
     return NextResponse.json(
-      {
-        error:
-          "Missing Authorization header. Use: Authorization: Bearer <supabase_access_token>",
-      },
+      { error: "Missing Authorization header" },
       { status: 401 },
     );
   }
@@ -59,22 +42,19 @@ export async function POST(request: NextRequest) {
   let body: unknown;
   try {
     body = await request.json();
+    console.log(`[api/completion] Body:`, body);
   } catch {
+    console.error("[api/completion] Invalid JSON body");
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const postId =
-    typeof body === "object" &&
-    body !== null &&
-    "postId" in body &&
-    typeof (body as { postId: unknown }).postId === "string"
-      ? (body as { postId: string }).postId.trim()
-      : null;
+  const postId = (body as any)?.postId?.trim();
 
   if (!postId) {
+    console.error("[api/completion] Missing postId in body");
     return NextResponse.json(
       { error: "Body must include a string postId" },
-      { status: 400 },
+      { status: 400 }
     );
   }
 
@@ -85,71 +65,54 @@ export async function POST(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   if (authError || !user) {
+    console.error("[api/completion] Auth error or user not found:", authError);
     return NextResponse.json(
       { error: "Invalid or expired access token" },
       { status: 401 },
     );
   }
 
-  console.log(
-    `[completion] Recording completion for user ${user.id} on post ${postId}`,
-  );
+  console.log(`[api/completion] Authenticated user: ${user.id} for post: ${postId}`);
 
-  const { error } = await supabase.from("user_completions").insert({
+  // 1. Record completion in DB
+  const { error: completionError } = await supabase.from("user_completions").insert({
     user_id: user.id,
     post_id: postId,
   });
 
-  if (error) {
-    if (error.code === "23505") {
-      console.log(
-        `[completion] User ${user.id} already completed post ${postId}. Redirecting...`,
-      );
-      revalidatePath("/preview");
-      revalidatePath("/studio");
-      revalidatePath("/");
-      revalidatePath(`/challenge/${postId}`);
-      revalidatePath(`/challenge/${postId}/complete`);
+  if (completionError) {
+    if (completionError.code === "23505") {
+      console.log(`[api/completion] Already completed. Continuing to kill...`);
+    } else {
+      console.error(`[api/completion] DB Error: ${completionError.message}`);
+      return NextResponse.json({ error: completionError.message }, { status: 400 });
+    }
+  }
 
-      // Still try to kill the container just in case it's running
-      try {
-        const scriptPath = path.join(process.cwd(), "kill-user-container.sh");
-        await execAsync(`bash ${scriptPath} ${user.id} ${postId}`);
-      } catch (e) {
-        console.error(
-          `[completion] Failed to kill container for already completed post:`,
-          e,
-        );
-      }
+  // 2. Revalidate paths immediately
+  console.log(`[api/completion] Revalidating paths...`);
+  revalidatePath("/preview");
+  revalidatePath("/studio");
+  revalidatePath("/");
+  revalidatePath(`/challenge/${postId}`);
+  revalidatePath(`/challenge/${postId}/complete`);
 
-      // return NextResponse.redirect(
-      //   new URL(`/challenge/${postId}/complete`, request.url),
-      // );
-      return NextResponse.json({ success: true, alreadyCompleted: true });
-      }
-      console.error(`[completion] Database error: ${error.message}`);
-      return NextResponse.json({ error: error.message }, { status: 400 });
-      }
+  // 3. Kill the container immediately using the background script
+  console.log(`[api/completion] Triggering container kill script...`);
+  try {
+    const scriptPath = path.join(process.cwd(), 'kill-user-container.sh');
+    // We run this in the background (fire and forget) to return the response faster,
+    // OR we can await it if we want to be sure. User said "immediately after successful ping".
+    execAsync(`bash ${scriptPath} ${user.id} ${postId}`).then(({ stdout, stderr }) => {
+      console.log(`[api/completion] Kill script output:`, stdout);
+      if (stderr) console.error(`[api/completion] Kill script stderr:`, stderr);
+    }).catch(err => {
+      console.error(`[api/completion] Kill script failed:`, err);
+    });
+  } catch (e) {
+    console.error(`[api/completion] Error initiating kill script:`, e);
+  }
 
-      console.log(`[completion] Successfully recorded completion. Killing container...`);
-
-      // Kill the container immediately
-      try {
-      const scriptPath = path.join(process.cwd(), 'kill-user-container.sh');
-      await execAsync(`bash ${scriptPath} ${user.id} ${postId}`);
-      console.log(`[completion] Container killed successfully.`);
-      } catch (e) {
-      console.error(`[completion] Failed to kill container:`, e);
-      // Continue even if killing fails, as the completion was recorded
-      }
-
-      revalidatePath("/preview");
-      revalidatePath("/studio");
-      revalidatePath("/");
-      revalidatePath(`/challenge/${postId}`);
-      revalidatePath(`/challenge/${postId}/complete`);
-
-      console.log(`[completion] Returning success JSON for user ${user.id}.`);
-      return NextResponse.json({ success: true });
-      }
-
+  console.log(`[api/completion] Returning success JSON`);
+  return NextResponse.json({ success: true, message: "Completion recorded and container termination initiated." });
+}
