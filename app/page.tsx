@@ -1,6 +1,5 @@
 import Link from 'next/link'
 import { getServerSupabaseUser } from '@/utils/supabase/cached-session'
-import { deployContainer } from './actions/docker'
 import { ChallengeFeedCard, type ChallengeFeedItem } from '@/components/ChallengeFeedCard'
 import { HeroSection } from '@/components/home/HeroSection'
 import fs from 'fs'
@@ -71,21 +70,21 @@ export default async function Home() {
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row sm:flex-wrap sm:justify-start">
           <Link
             href="/library"
-            className="inline-flex h-11 w-full items-center justify-center rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-sm transition-all duration-200 hover:bg-primary/92 hover:shadow-md active:scale-[0.98] sm:w-auto"
+            className="inline-flex h-11 w-full items-center justify-center rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-sm transition-all duration-200 hover:bg-primary/95 hover:shadow-md active:scale-[0.98] sm:w-auto"
           >
             Explore library
           </Link>
           {user ? (
             <Link
               href="/new"
-              className="inline-flex h-11 w-full items-center justify-center rounded-full border border-border bg-background/80 px-6 text-sm font-semibold text-foreground shadow-sm backdrop-blur-sm transition-all duration-200 hover:border-primary/35 hover:bg-muted/50 active:scale-[0.98] dark:border-border dark:bg-card/60 dark:hover:border-primary/40 dark:hover:bg-card/90 sm:w-auto"
+              className="inline-flex h-11 w-full items-center justify-center rounded-full border border-border bg-background px-6 text-sm font-semibold text-foreground shadow-sm transition-all duration-200 hover:border-primary/35 hover:bg-muted active:scale-[0.98] dark:border-border dark:bg-card dark:hover:border-primary/40 dark:hover:bg-muted/50 sm:w-auto"
             >
               Create challenge
             </Link>
           ) : (
             <Link
               href="/login"
-              className="inline-flex h-11 w-full items-center justify-center rounded-full border border-border bg-transparent px-6 text-sm font-semibold text-foreground transition-all duration-200 hover:border-primary/30 hover:bg-muted/40 active:scale-[0.98] sm:w-auto"
+              className="inline-flex h-11 w-full items-center justify-center rounded-full border border-border bg-background px-6 text-sm font-semibold text-foreground transition-all duration-200 hover:border-primary/30 hover:bg-muted active:scale-[0.98] sm:w-auto"
             >
               Sign in to create
             </Link>
@@ -182,46 +181,6 @@ export default async function Home() {
             )}
           </div>
         </div>
-
-        {/* Secondary: custom image — less prominent */}
-        <section className="mt-20 scroll-mt-8 rounded-2xl border border-border/80 bg-card p-6 shadow-sm transition-shadow duration-300 hover:shadow-md md:p-8">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between lg:gap-12">
-            <div className="max-w-md">
-              <h3 className="text-lg font-semibold tracking-tight text-foreground">Run a custom image</h3>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                Advanced: start any Docker image that exposes port <span className="font-mono text-foreground">3000</span>.
-                Your workspace can be resumed from the feed when you&apos;re signed in.
-              </p>
-              <Link
-                href="/studio"
-                className="mt-4 inline-flex text-sm font-medium text-primary underline-offset-4 transition-colors hover:text-primary/85 hover:underline"
-              >
-                Open active session →
-              </Link>
-            </div>
-            <form action={deployContainer} className="flex w-full max-w-md flex-col gap-4 lg:shrink-0">
-              <div className="flex flex-col gap-2">
-                <label htmlFor="image" className="text-sm font-medium text-foreground">
-                  Image name
-                </label>
-                <input
-                  id="image"
-                  name="image"
-                  type="text"
-                  placeholder="e.g. my-registry/challenge:latest"
-                  required
-                  className="h-11 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground transition-[border-color,box-shadow] duration-200 placeholder:text-muted-foreground focus-visible:border-primary/35 focus-visible:ring-2 focus-visible:ring-ring/80 focus-visible:outline-none"
-                />
-              </div>
-              <button
-                type="submit"
-                className="h-11 w-full rounded-lg border border-border bg-muted/50 text-sm font-semibold text-foreground transition-all duration-200 hover:bg-muted hover:border-border active:scale-[0.99]"
-              >
-                Launch workspace
-              </button>
-            </form>
-          </div>
-        </section>
       </main>
     </div>
   )

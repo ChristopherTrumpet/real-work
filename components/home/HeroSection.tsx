@@ -88,14 +88,14 @@ export function HeroSection({ children }: HeroSectionProps) {
       <div className="pointer-events-none absolute inset-0" aria-hidden>
         <div className="absolute inset-0 text-primary">
           <FlickeringGrid
-            className="absolute inset-0 opacity-[0.72] sm:opacity-80"
+            className="absolute inset-0 opacity-[0.55] sm:opacity-60"
             squareSize={4}
             gridGap={6}
-            flickerChance={0.32}
+            flickerChance={0.12}
             color="currentColor"
-            maxOpacity={0.34}
+            maxOpacity={0.18}
             interactive
-            mouseInfluenceRadius={220}
+            mouseInfluenceRadius={380}
           />
         </div>
         <div
