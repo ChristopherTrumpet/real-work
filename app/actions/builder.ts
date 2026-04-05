@@ -143,6 +143,7 @@ RUN echo '#!/bin/bash' > /dockerstartup/custom_startup.sh && \\
 
 # Create Entrypoint
 RUN echo '#!/bin/bash' > /entrypoint.sh && \\
+    echo 'sudo rm -f /tmp/.X*-lock /tmp/.X11-unix/X*' >> /entrypoint.sh && \\
     echo 'Xvnc :0 -SecurityTypes None -localhost -geometry 1490x715 -depth 24 &' >> /entrypoint.sh && \\
     echo 'sleep 1' >> /entrypoint.sh && \\
     echo 'startxfce4 &' >> /entrypoint.sh && \\

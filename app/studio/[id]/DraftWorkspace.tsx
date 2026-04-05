@@ -15,6 +15,7 @@ import {
   ChevronRight
 } from 'lucide-react'
 import { publishChallenge } from '@/app/actions/publish'
+import { isContainerReady } from '@/app/actions/docker'
 import { useBuild } from '@/lib/build-context'
 import { cn } from '@/lib/utils'
 
@@ -25,6 +26,7 @@ export default function DraftWorkspace({ post }: { post: any }) {
   
   const [port, setPort] = useState<string | null>(searchParams.get('port'))
   const [hostname, setHostname] = useState<string>('localhost')
+  const [isReady, setIsReady] = useState(false)
   const [containerId, setContainerId] = useState<string | null>(searchParams.get('containerId'))
   const [copied, setCopied] = useState(false)
   const [isPublishing, setIsPublishing] = useState(false)
@@ -34,6 +36,34 @@ export default function DraftWorkspace({ post }: { post: any }) {
       setHostname(window.location.hostname)
     }
   }, [])
+
+  // Poll for container readiness
+  useEffect(() => {
+    if (!port || isReady) return
+    let isMounted = true
+    let timeoutId: NodeJS.Timeout
+
+    const checkReady = async () => {
+      try {
+        const ready = await isContainerReady(parseInt(port))
+        if (ready && isMounted) {
+          // Extra buffer for internal services to boot
+          timeoutId = setTimeout(() => {
+            if (isMounted) setIsReady(true)
+          }, 2000)
+        } else if (isMounted) {
+          timeoutId = setTimeout(checkReady, 2000)
+        }
+      } catch (e) {
+        if (isMounted) timeoutId = setTimeout(checkReady, 2000)
+      }
+    }
+    checkReady()
+    return () => { 
+      isMounted = false
+      if (timeoutId) clearTimeout(timeoutId)
+    }
+  }, [port, isReady])
 
   // Sync state from active build if it finishes while we are on this page
   useEffect(() => {
@@ -176,7 +206,7 @@ export default function DraftWorkspace({ post }: { post: any }) {
 
         {/* Main VM Embed */}
         <main className="flex-1 bg-background relative">
-          {port ? (
+          {port && isReady ? (
             <iframe
               key={`${hostname}-${port}`}
               src={`http://${hostname}:${port}`}

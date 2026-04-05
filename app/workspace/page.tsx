@@ -4,11 +4,48 @@ import React, { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Rocket, Shield, Info, ArrowLeft } from 'lucide-react'
+import { isContainerReady } from '@/app/actions/docker'
 
 export default function WorkspacePage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const port = searchParams.get('port')
+  const [hostname, setHostname] = useState('localhost')
+  const [isReady, setIsReady] = useState(false)
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setHostname(window.location.hostname)
+    }
+  }, [])
+
+  // Poll for container readiness
+  useEffect(() => {
+    if (!port || isReady) return
+    let isMounted = true
+    let timeoutId: NodeJS.Timeout
+
+    const checkReady = async () => {
+      try {
+        const ready = await isContainerReady(parseInt(port))
+        if (ready && isMounted) {
+          // Extra buffer for internal services to boot
+          timeoutId = setTimeout(() => {
+            if (isMounted) setIsReady(true)
+          }, 2000)
+        } else if (isMounted) {
+          timeoutId = setTimeout(checkReady, 2000)
+        }
+      } catch (e) {
+        if (isMounted) timeoutId = setTimeout(checkReady, 2000)
+      }
+    }
+    checkReady()
+    return () => { 
+      isMounted = false
+      if (timeoutId) clearTimeout(timeoutId)
+    }
+  }, [port, isReady])
   
   if (!port) {
     return (
@@ -50,11 +87,25 @@ export default function WorkspacePage() {
 
       {/* Main VM Embed */}
       <main className="flex-1 bg-black relative">
-        <iframe 
-          src={`http://127.0.0.1:${port}`} 
-          className="w-full h-full border-none"
-          title="Challenge Workspace"
-        />
+        {isReady ? (
+          <iframe 
+            key={`${hostname}-${port}`}
+            src={`http://${hostname}:${port}`} 
+            className="w-full h-full border-none"
+            title="Challenge Workspace"
+          />
+        ) : (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-6">
+            <div className="relative">
+              <div className="w-20 h-20 border-4 border-border border-t-primary rounded-full animate-spin" />
+              <Rocket className="absolute inset-0 m-auto size-8 text-primary animate-pulse" />
+            </div>
+            <div className="text-center space-y-2">
+              <p className="text-sm font-bold uppercase tracking-[0.3em] text-primary">Booting Sandbox Environment</p>
+              <p className="text-[10px] font-mono text-muted-foreground italic">Setting up secure container...</p>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   )

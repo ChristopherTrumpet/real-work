@@ -33,22 +33,16 @@ export async function resetProgress(postId: string, userId: string) {
 }
 
 export async function isContainerReady(port: number): Promise<boolean> {
-  return new Promise((resolve) => {
-    const socket = new net.Socket()
-    const onError = () => {
-      socket.destroy()
-      resolve(false)
-    }
-
-    socket.setTimeout(1000)
-    socket.on('error', onError)
-    socket.on('timeout', onError)
-
-    socket.connect(port, 'localhost', () => {
-      socket.destroy()
-      resolve(true)
-    })
-  })
+  try {
+    // Try to fetch the index page from the container's websockify/novnc server
+    const res = await fetch(`http://127.0.0.1:${port}`, {
+      next: { revalidate: 0 },
+      signal: AbortSignal.timeout(1000)
+    });
+    return res.status === 200;
+  } catch (e) {
+    return false;
+  }
 }
 
 export async function deployContainer(formData: FormData) {
@@ -160,7 +154,13 @@ export async function killContainer(port: number, saveContext?: { userId: string
     if (saveContext?.userId && saveContext?.postId) {
       const progressTag = `realwork-progress:${saveContext.userId}-${saveContext.postId}`
       console.log(`Saving container ${trimmedId} to image ${progressTag}...`)
-      await execAsync(`docker commit ${trimmedId} ${progressTag}`)
+      const commitCmd = `docker commit \\
+        --change='ENTRYPOINT ["/entrypoint.sh"]' \\
+        --change='USER developer' \\
+        --change='EXPOSE 3000' \\
+        --change='WORKDIR /workspace' \\
+        ${trimmedId} ${progressTag}`
+      await execAsync(commitCmd)
     }
 
     // 2. Stop and remove the container
