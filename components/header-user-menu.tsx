@@ -17,6 +17,10 @@ type HeaderUserMenuProps = {
 export function HeaderUserMenu({ email, avatarUrl, fullName, username }: HeaderUserMenuProps) {
   const signOutFormRef = useRef<HTMLFormElement>(null)
   const initials = avatarInitials(fullName, username, email)
+  const publicHandle = username?.trim() ?? ''
+  const publicProfileHref = publicHandle
+    ? `/u/${encodeURIComponent(publicHandle)}`
+    : '/profile'
 
   return (
     <>
@@ -65,10 +69,23 @@ export function HeaderUserMenu({ email, avatarUrl, fullName, username }: HeaderU
             </div>
             <DropdownMenu.Item asChild>
               <Link
+                href={publicProfileHref}
+                className="block cursor-pointer rounded-lg px-3 py-2 text-sm outline-none data-[highlighted]:bg-muted"
+              >
+                <span className="block font-medium">Public profile</span>
+                {!publicHandle ? (
+                  <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
+                    Choose a username in account settings to get your page
+                  </span>
+                ) : null}
+              </Link>
+            </DropdownMenu.Item>
+            <DropdownMenu.Item asChild>
+              <Link
                 href="/profile"
                 className="block cursor-pointer rounded-lg px-3 py-2 text-sm outline-none data-[highlighted]:bg-muted"
               >
-                Profile
+                Account settings
               </Link>
             </DropdownMenu.Item>
             <DropdownMenu.Separator className="my-1 h-px bg-border" />
