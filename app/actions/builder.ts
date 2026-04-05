@@ -23,7 +23,7 @@ export async function buildDraftContainer(config: any) {
 
   if (!user) throw new Error("Not authenticated");
 
-  const { title, description, difficulty, tags, repoUrl, thumbnailUrl } =
+  const { title, description, difficulty, tags, repoUrl, thumbnailUrl, setupScript } =
     config;
   const apiKey = crypto.randomBytes(32).toString("hex");
 
@@ -44,6 +44,7 @@ export async function buildDraftContainer(config: any) {
       content_url: "pending",
       api_key: apiKey,
       thumbnail_url: thumbnailUrl,
+      setup_script: setupScript,
       is_draft: true,
     })
     .select()
@@ -77,12 +78,17 @@ async function runDraftBuildProcess(
   apiKey: string,
   postId: string,
 ) {
-  const { repoUrl } = config;
+  const { repoUrl, setupScript } = config;
   const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "draft-builder-"));
   const supabase = await createClient();
 
   try {
     appendLog(buildId, `Preparing universal workspace environment...`, true);
+
+    // Escape backticks and dollar signs for the shell script
+    const escapedSetupScript = setupScript
+      ? setupScript.replace(/`/g, "\\`").replace(/\$/g, "\\$")
+      : "";
 
     // Standard high-performance Dockerfile for ALL challenges
     // No more templates - just a solid base with everything a dev needs
@@ -134,9 +140,17 @@ RUN mkdir -p /workspace /dockerstartup && \\
 WORKDIR /workspace
 ${repoUrl ? `RUN git clone ${repoUrl} . && chown -R developer:developer /workspace` : 'RUN echo "Starting with empty workspace" > README.md && chown developer:developer README.md'}
 
+# Create setup script if provided
+${
+  setupScript
+    ? `RUN echo "${escapedSetupScript}" > /dockerstartup/setup.sh && chmod +x /dockerstartup/setup.sh && chown developer:developer /dockerstartup/setup.sh`
+    : "RUN touch /dockerstartup/setup.sh"
+}
+
 # Create startup script
 RUN echo '#!/bin/bash' > /dockerstartup/custom_startup.sh && \\
     echo 'export DISPLAY=:0' >> /dockerstartup/custom_startup.sh && \\
+    echo '[ -f /dockerstartup/setup.sh ] && /dockerstartup/setup.sh' >> /dockerstartup/custom_startup.sh && \\
     echo 'code /workspace --no-sandbox --disable-gpu &' >> /dockerstartup/custom_startup.sh && \\
     chmod +x /dockerstartup/custom_startup.sh && \\
     chown developer:developer /dockerstartup/custom_startup.sh

@@ -14,7 +14,8 @@ import {
   X,
   ShieldCheck,
   Globe,
-  Terminal
+  Terminal,
+  Upload
 } from 'lucide-react'
 import { buildDraftContainer } from '@/app/actions/builder'
 import { fetchGitHubRepos } from '@/app/actions/github'
@@ -42,6 +43,19 @@ export default function NewChallengePage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isSourceExpanded, setIsSourceExpanded] = useState(false)
   const [isScriptExpanded, setIsScriptExpanded] = useState(false)
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      const content = event.target?.result as string
+      setFormData({ ...formData, setupScript: content })
+      setIsScriptExpanded(true)
+    }
+    reader.readAsText(file)
+  }
 
   const loadRepos = async () => {
     setIsLoadingRepos(true)
@@ -323,15 +337,47 @@ export default function NewChallengePage() {
                   </button>
 
                   {isScriptExpanded && (
-                    <div className="mt-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                      <textarea
-                        value={formData.setupScript}
-                        onChange={e => setFormData({ ...formData, setupScript: e.target.value })}
-                        placeholder="#!/bin/bash\nnpm install && npm run dev\necho 'Ready!'"
-                        className="w-full h-32 border border-input rounded-lg bg-muted/20 p-4 text-xs font-mono outline-none focus:ring-2 focus:ring-primary/20 focus:bg-card transition-all resize-none placeholder:text-muted-foreground/30"
-                      />
+                    <div className="mt-4 animate-in fade-in slide-in-from-top-2 duration-300 space-y-4">
+                      <div className="flex items-center gap-4">
+                        <textarea
+                          value={formData.setupScript}
+                          onChange={e => setFormData({ ...formData, setupScript: e.target.value })}
+                          placeholder="#!/bin/bash\nnpm install && npm run dev\necho 'Ready!'"
+                          className="flex-1 h-32 border border-input rounded-lg bg-muted/20 p-4 text-xs font-mono outline-none focus:ring-2 focus:ring-primary/20 focus:bg-card transition-all resize-none placeholder:text-muted-foreground/30"
+                        />
+                        <div className="flex flex-col gap-2">
+                           <input
+                            type="file"
+                            id="setup-script-upload"
+                            className="hidden"
+                            accept=".sh"
+                            onChange={handleFileUpload}
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-10 gap-2 text-xs"
+                            onClick={() => document.getElementById('setup-script-upload')?.click()}
+                          >
+                            <Upload className="size-3.5" />
+                            Upload .sh
+                          </Button>
+                          {formData.setupScript && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-10 text-xs text-muted-foreground hover:text-destructive"
+                              onClick={() => setFormData({ ...formData, setupScript: '' })}
+                            >
+                              Clear
+                            </Button>
+                          )}
+                        </div>
+                      </div>
                       <p className="mt-2 text-[10px] text-muted-foreground italic">
-                        Executed with root privileges as a startup init script.
+                        Executed with root privileges as a startup init script. Ensure your script starts with #!/bin/bash.
                       </p>
                     </div>
                   )}
