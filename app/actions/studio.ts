@@ -1,13 +1,18 @@
 'use server'
 
-import { exec } from 'child_process'
+import { exec, execFile } from 'child_process'
 import { promisify } from 'util'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/utils/supabase/server'
+import {
+  createDockerCompletionEnvFile,
+  deleteDockerEnvFile,
+} from '@/lib/docker-run-env'
 import fs from 'fs'
 import path from 'path'
 
 const execAsync = promisify(exec)
+const execFileAsync = promisify(execFile)
 
 type ServerClient = Awaited<ReturnType<typeof createClient>>
 
@@ -28,7 +33,8 @@ export async function startStudioSession() {
 // ... same as before
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  
+  const { data: { session } } = await supabase.auth.getSession()
+
   if (!user) {
     redirect('/login')
   }
@@ -39,9 +45,22 @@ export async function startStudioSession() {
   let containerId = ''
 
   try {
-    const runCmd = `docker run -d --shm-size="1gb" -p 0:${internalPort} ${image}`
-    const { stdout: runStdout } = await execAsync(runCmd)
-    containerId = runStdout.trim()
+    let envFile: string | null = null
+    try {
+      envFile = await createDockerCompletionEnvFile({
+        accessToken: session?.access_token,
+        postId: null,
+      })
+      const runArgs = ['run', '-d', '--shm-size=1gb', '-p', `0:${internalPort}`]
+      if (envFile) runArgs.push('--env-file', envFile)
+      runArgs.push(image)
+      const { stdout: runStdout } = await execFileAsync('docker', runArgs, {
+        maxBuffer: 10 * 1024 * 1024,
+      })
+      containerId = runStdout.trim()
+    } finally {
+      await deleteDockerEnvFile(envFile)
+    }
 
     let permSuccess = false;
     for (let i = 0; i < 5; i++) {
