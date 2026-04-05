@@ -31,6 +31,12 @@ export async function SiteHeader() {
         </div>
         <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
           <Link
+            href="/library"
+            className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            Library
+          </Link>
+          <Link
             href="/search"
             className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             aria-label="Search"

@@ -6,11 +6,11 @@ import { FlickeringGrid } from '@/components/ui/flickering-grid'
 
 /** Rotating hero lines — type → pause → delete → next */
 export const HERO_HEADLINES = [
-  'Practice like it ships.',
-  'Solve challenges inside real containers.',
-  'Debug where the code actually runs.',
-  'Learn from challenges the community ships.',
-  'Real environments. Real feedback.',
+  'Ship code that actually works.',
+  'Master distributed systems by breaking them.',
+  'Debug production-grade containers.',
+  'Level up with community-rated engineering labs.',
+  'Real environments. Real high-stakes scenarios.',
 ] as const
 
 type HeroSectionProps = {
