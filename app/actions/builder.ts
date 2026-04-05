@@ -120,7 +120,8 @@ RUN chown -R abc:abc /workspace && chmod -R 777 /workspace
 
     // 3. Export configuration
     appendLog(buildId, `Exporting local configuration...`, true)
-    const exportDir = path.join(process.cwd(), 'challenges', imageName)
+    const safeImageName = imageName.replace(/:/g, '_')
+    const exportDir = path.join(process.cwd(), 'challenges', safeImageName)
     await fs.mkdir(exportDir, { recursive: true })
     const files = await fs.readdir(tmpDir)
     for (const file of files) {
@@ -192,6 +193,7 @@ RUN chown -R abc:abc /workspace && chmod -R 777 /workspace
       description: details.description,
       difficulty: details.difficulty,
       tags: details.tags.split(',').map((t: string) => t.trim()).filter(Boolean),
+      thumbnail_url: details.thumbnailUrl,
       content_url: imageName,
       benchmark_language: benchmarkLang,
       benchmark_gold_code: goldCode,
