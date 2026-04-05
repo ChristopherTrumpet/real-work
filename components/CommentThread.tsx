@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { addComment } from '@/app/challenge/actions'
+import { cn } from '@/lib/utils'
 
 export type CommentAuthor = {
   username: string | null
@@ -55,11 +56,13 @@ function CommentCard({
   postId,
   currentUserId,
   depth,
+  readOnly,
 }: {
   node: CommentNode
   postId: string
   currentUserId: string | null
   depth: number
+  readOnly?: boolean
 }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
@@ -93,7 +96,7 @@ function CommentCard({
           </time>
         </header>
         <p className="mt-2 text-sm text-foreground whitespace-pre-wrap">{node.body}</p>
-        {currentUserId && (
+        {!readOnly && currentUserId && (
           <button
             type="button"
             onClick={() => setOpen((o) => !o)}
@@ -102,7 +105,7 @@ function CommentCard({
             {open ? 'Cancel' : 'Reply'}
           </button>
         )}
-        {open && currentUserId && (
+        {!readOnly && open && currentUserId && (
           <form action={onReply} className="mt-3 space-y-2">
             <textarea
               name="body"
@@ -125,7 +128,14 @@ function CommentCard({
       {node.replies.length > 0 && (
         <div className="mt-3 space-y-3">
           {node.replies.map((r) => (
-            <CommentCard key={r.id} node={r} postId={postId} currentUserId={currentUserId} depth={depth + 1} />
+            <CommentCard
+              key={r.id}
+              node={r}
+              postId={postId}
+              currentUserId={currentUserId}
+              depth={depth + 1}
+              readOnly={readOnly}
+            />
           ))}
         </div>
       )}
@@ -137,6 +147,9 @@ export function CommentThread({
   postId,
   flatComments,
   currentUserId,
+  readOnly = false,
+  title = 'Discussion',
+  compact = false,
 }: {
   postId: string
   flatComments: Array<{
@@ -148,6 +161,11 @@ export function CommentThread({
     profiles: CommentAuthor | null
   }>
   currentUserId: string | null
+  /** When true, no composer or reply UI (e.g. user has not completed the challenge yet). */
+  readOnly?: boolean
+  title?: string
+  /** Tighter spacing for narrow sidebars. */
+  compact?: boolean
 }) {
   const router = useRouter()
   const [pending, setPending] = useState(false)
@@ -167,11 +185,17 @@ export function CommentThread({
     router.refresh()
   }
 
-  return (
-    <section className="mt-10 border-t border-border pt-8">
-      <h2 className="text-lg font-semibold text-foreground mb-4">Comments</h2>
+  const sectionClass = compact
+    ? 'mt-0 border-0 pt-0'
+    : 'mt-10 border-t border-border pt-8'
 
-      {currentUserId ? (
+  return (
+    <section className={sectionClass}>
+      <h2 className={cn('font-semibold text-foreground mb-3', compact ? 'text-sm' : 'text-lg mb-4')}>
+        {title}
+      </h2>
+
+      {!readOnly && currentUserId ? (
         <form action={onTopLevel} className="mb-8 space-y-2">
           <textarea
             name="body"
@@ -189,9 +213,30 @@ export function CommentThread({
             {pending ? 'Posting…' : 'Post comment'}
           </button>
         </form>
+      ) : readOnly ? (
+        <p
+          className={cn(
+            'text-muted-foreground',
+            compact ? 'mb-4 text-xs' : 'mb-8 text-sm'
+          )}
+        >
+          {!currentUserId ? (
+            <>
+              <a href="/login" className="font-medium text-primary hover:underline">
+                Sign in
+              </a>{' '}
+              and complete this challenge to comment or reply to other solvers.
+            </>
+          ) : (
+            <>
+              Complete this challenge to join the discussion — you can post comments and reply to threads once
+              you&apos;ve solved it.
+            </>
+          )}
+        </p>
       ) : (
         <p className="mb-8 text-sm text-muted-foreground">
-          <a href="/login" className="text-primary font-medium hover:underline">
+          <a href="/login" className="font-medium text-primary hover:underline">
             Sign in
           </a>{' '}
           to join the discussion.
@@ -201,9 +246,16 @@ export function CommentThread({
       {tree.length === 0 ? (
         <p className="text-sm text-muted-foreground">No comments yet.</p>
       ) : (
-        <div className="space-y-4">
+        <div className={cn(compact ? 'space-y-3' : 'space-y-4')}>
           {tree.map((n) => (
-            <CommentCard key={n.id} node={n} postId={postId} currentUserId={currentUserId} depth={0} />
+            <CommentCard
+              key={n.id}
+              node={n}
+              postId={postId}
+              currentUserId={currentUserId}
+              depth={0}
+              readOnly={readOnly}
+            />
           ))}
         </div>
       )}

@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { createClient } from '@/utils/supabase/server'
 import { deployContainer } from '@/app/actions/docker'
 import { CommentThread } from '@/components/CommentThread'
+import { ReadOnlyStarRating } from '@/components/read-only-star-rating'
 import fs from 'fs'
 import path from 'path'
 
@@ -49,15 +50,27 @@ export default async function ChallengePage({ params }: PageProps) {
     user && post ? path.join(process.cwd(), 'container_data', user.id, post.id) : null
   const hasSession = localPath ? fs.existsSync(localPath) : false
 
+  const { data: userCompletion } = user
+    ? await supabase
+        .from('user_completions')
+        .select('user_id')
+        .eq('post_id', post.id)
+        .eq('user_id', user.id)
+        .maybeSingle()
+    : { data: null }
+
+  const canDiscuss = Boolean(user && userCompletion)
+
   const author = post.profiles as { username: string | null; full_name: string | null } | null
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
-      <Link href="/" className="text-sm text-muted-foreground hover:text-foreground mb-6 inline-block">
+    <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+      <Link href="/" className="mb-6 inline-block text-sm text-muted-foreground hover:text-foreground">
         ← Back to feed
       </Link>
 
-      <article className="rounded-2xl border border-border bg-card p-6 sm:p-8 shadow-sm">
+      <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:gap-10">
+      <article className="min-w-0 flex-1 rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-foreground">{post.title}</h1>
@@ -98,7 +111,6 @@ export default async function ChallengePage({ params }: PageProps) {
         )}
 
         <div className="mt-6 flex flex-wrap gap-4 text-sm text-muted-foreground">
-          <span>★ {post.average_rating != null ? Number(post.average_rating).toFixed(1) : '—'} ratings</span>
           <span>{post.number_of_completions ?? 0} solves</span>
           {post.content_url && (
             <code className="rounded bg-muted px-2 py-0.5 text-xs">{post.content_url}</code>
@@ -152,7 +164,29 @@ export default async function ChallengePage({ params }: PageProps) {
         )}
       </article>
 
-      <CommentThread postId={post.id} flatComments={flatComments} currentUserId={user?.id ?? null} />
+      <aside className="w-full shrink-0 lg:sticky lg:top-20 lg:w-[min(100%,380px)] lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+          <ReadOnlyStarRating
+            averageRating={post.average_rating}
+            ratingsCount={post.ratings_count}
+            className="border-b border-border pb-5"
+          />
+          <p className="mt-4 text-xs text-muted-foreground">
+            Star ratings are submitted on the completion page after you finish. Solvers can discuss below.
+          </p>
+        </div>
+        <div className="mt-4 rounded-2xl border border-border bg-card p-5 shadow-sm">
+          <CommentThread
+            postId={post.id}
+            flatComments={flatComments}
+            currentUserId={user?.id ?? null}
+            readOnly={!canDiscuss}
+            title="Discussion"
+            compact
+          />
+        </div>
+      </aside>
+      </div>
     </main>
   )
 }

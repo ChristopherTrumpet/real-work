@@ -22,6 +22,8 @@ export async function submitCompletion(postId: string) {
 
   revalidatePath('/preview')
   revalidatePath('/')
+  revalidatePath(`/challenge/${postId}`)
+  revalidatePath(`/challenge/${postId}/complete`)
   return { success: true }
 }
 
@@ -45,6 +47,8 @@ export async function submitRating(postId: string, rating: number) {
   }
 
   revalidatePath('/preview')
+  revalidatePath(`/challenge/${postId}`)
+  revalidatePath(`/challenge/${postId}/complete`)
   return { success: true }
 }
 
@@ -61,6 +65,17 @@ export async function submitComment(postId: string, formData: FormData) {
     return { error: 'Comment cannot be empty.' }
   }
 
+  const { data: solved } = await supabase
+    .from('user_completions')
+    .select('user_id')
+    .eq('post_id', postId)
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  if (!solved) {
+    return { error: 'Complete this challenge before commenting.' }
+  }
+
   const { error } = await supabase.from('post_comments').insert({
     user_id: user.id,
     post_id: postId,
@@ -72,5 +87,7 @@ export async function submitComment(postId: string, formData: FormData) {
   }
 
   revalidatePath('/preview')
+  revalidatePath(`/challenge/${postId}`)
+  revalidatePath(`/challenge/${postId}/complete`)
   return { success: true }
 }
