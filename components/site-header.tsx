@@ -36,20 +36,6 @@ export async function SiteHeader() {
           >
             Library
           </Link>
-          <Link
-            href="/search"
-            className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            aria-label="Search"
-          >
-            <svg className="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
-            </svg>
-          </Link>
           {user ? (
             <HeaderUserMenu
               email={user.email ?? ''}

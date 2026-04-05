@@ -165,11 +165,11 @@ export default async function PublicProfilePage({ params }: PageProps) {
         </div>
 
         <section>
-          <h2 className="text-xl font-bold text-foreground mb-4">Published challenges</h2>
+          <h2 className="text-xl font-bold text-foreground mb-5">Published challenges</h2>
           {list.length === 0 ? (
             <p className="text-sm text-muted-foreground">No challenges yet.</p>
           ) : (
-            <ul className="space-y-3">
+            <ul className="flex flex-col gap-3">
               {list.map((p) => (
                 <li key={p.id}>
                   <Link

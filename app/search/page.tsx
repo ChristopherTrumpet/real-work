@@ -1,16 +1,9 @@
-import { Suspense } from 'react'
-import SearchClient from './SearchClient'
+import { redirect } from 'next/navigation'
 
-export default function SearchPage() {
-  return (
-    <main className="min-h-[60vh] bg-background">
-      <Suspense
-        fallback={
-          <div className="mx-auto max-w-3xl px-4 py-16 text-center text-muted-foreground text-sm">Loading search…</div>
-        }
-      >
-        <SearchClient />
-      </Suspense>
-    </main>
-  )
+type Props = { searchParams: Promise<Record<string, string>> }
+
+export default async function SearchPage({ searchParams }: Props) {
+  const params = await searchParams
+  const qs = new URLSearchParams(params).toString()
+  redirect(qs ? `/library?${qs}` : '/library')
 }

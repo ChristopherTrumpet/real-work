@@ -38,19 +38,19 @@ export function ChallengeFeedCard({
 
   return (
     <article className="group relative overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-all duration-200 hover:border-primary/25 hover:shadow-md">
-      <div className="flex flex-col gap-6 p-5 sm:flex-row sm:p-6">
+      <div className="flex flex-col gap-5 p-6 sm:flex-row">
         {container.thumbnail_url && (
           <div className="aspect-video w-full shrink-0 self-start overflow-hidden rounded-xl border border-border bg-muted sm:w-56 md:w-64">
-            <img 
-              src={container.thumbnail_url} 
-              alt={container.title} 
+            <img
+              src={container.thumbnail_url}
+              alt={container.title}
               className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
             />
           </div>
         )}
         <div className="flex flex-1 flex-col justify-between min-w-0">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-            <div className="min-w-0 flex-1 space-y-3">
+            <div className="min-w-0 flex-1 flex flex-col gap-3">
               <div className="flex flex-wrap items-center gap-2 gap-y-2">
                 <Link
                   href={`/challenge/${container.id}`}
@@ -96,7 +96,7 @@ export function ChallengeFeedCard({
               </div>
             </div>
 
-            <div className="flex shrink-0 flex-col gap-2 sm:flex-row lg:flex-col lg:items-stretch">
+            <div className="flex shrink-0 flex-col gap-3 sm:flex-row lg:flex-col lg:items-stretch">
               {hasSession ? (
                 <>
                   <form action={deployContainer} className="min-w-[7.5rem]">
@@ -128,7 +128,7 @@ export function ChallengeFeedCard({
                     )}            </div>
           </div>
 
-          <footer className="mt-5 flex flex-col gap-2 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
+          <footer className="mt-6 flex flex-col gap-2 border-t border-border pt-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex min-w-0 items-center gap-2">
               {container.profiles?.username ? (
                 <Link

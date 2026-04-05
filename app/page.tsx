@@ -140,7 +140,7 @@ export default async function Home() {
                 </div>
               </>
             ) : (
-              <div className="rounded-2xl border border-dashed border-border bg-muted/20 px-8 py-20 text-center">
+              <div className="rounded-2xl border border-dashed border-border bg-muted/20 px-8 py-16 text-center">
                 <p className="text-base font-medium text-foreground">No highly-rated challenges yet</p>
                 <p className="mt-2 text-sm text-muted-foreground">
                   Check back soon or explore the full library to find something new.
@@ -157,7 +157,7 @@ export default async function Home() {
         </div>
 
         {/* Secondary: custom image — less prominent */}
-        <section className="mt-20 scroll-mt-8 rounded-2xl border border-border bg-card p-6 shadow-sm md:p-8">
+        <section className="mt-16 scroll-mt-8 rounded-2xl border border-border bg-card p-6 shadow-sm md:p-8">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between lg:gap-12">
             <div className="max-w-md">
               <h3 className="text-lg font-semibold text-foreground">Run a custom image</h3>
