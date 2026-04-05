@@ -52,21 +52,21 @@ export default async function Home() {
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row sm:flex-wrap sm:justify-start">
           <Link
             href="/library"
-            className="inline-flex h-11 w-full items-center justify-center rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 sm:w-auto"
+            className="inline-flex h-11 w-full items-center justify-center rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-sm transition-all duration-150 hover:bg-primary/90 active:scale-[0.97] sm:w-auto"
           >
             Explore library
           </Link>
           {user ? (
             <Link
               href="/new"
-              className="inline-flex h-11 w-full items-center justify-center rounded-full border border-border bg-card px-6 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-muted sm:w-auto"
+              className="inline-flex h-11 w-full items-center justify-center rounded-full border border-border bg-card px-6 text-sm font-semibold text-foreground shadow-sm transition-all duration-150 hover:bg-muted active:scale-[0.97] sm:w-auto"
             >
               Create challenge
             </Link>
           ) : (
             <Link
               href="/login"
-              className="inline-flex h-11 w-full items-center justify-center rounded-full border border-border bg-card px-6 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-muted sm:w-auto"
+              className="inline-flex h-11 w-full items-center justify-center rounded-full border border-border bg-card px-6 text-sm font-semibold text-foreground shadow-sm transition-all duration-150 hover:bg-muted active:scale-[0.97] sm:w-auto"
             >
               Sign in to create
             </Link>
@@ -122,13 +122,18 @@ export default async function Home() {
           <div className="flex flex-col gap-5">
             {list.length > 0 ? (
               <>
-                {list.map((container) => (
-                  <ChallengeFeedCard
+                {list.map((container, i) => (
+                  <div
                     key={container.id}
-                    container={container}
-                    userId={user?.id}
-                    hasSession={activeSessions.has(container.id)}
-                  />
+                    className="animate-fade-up"
+                    style={{ '--stagger': i } as React.CSSProperties}
+                  >
+                    <ChallengeFeedCard
+                      container={container}
+                      userId={user?.id}
+                      hasSession={activeSessions.has(container.id)}
+                    />
+                  </div>
                 ))}
                 <div className="mt-8 flex justify-center">
                   <Link

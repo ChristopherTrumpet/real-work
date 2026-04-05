@@ -99,7 +99,7 @@ export default function NewChallengePage() {
   return (
     <div className="min-h-[calc(100vh-3.5rem)] bg-background py-12 px-4 sm:px-6 lg:px-8 relative text-foreground">
       <div className="mx-auto max-w-6xl">
-        <div className="flex items-center gap-3 mb-10">
+        <div className="flex items-center gap-3 mb-10 animate-fade-up" style={{ '--stagger': 0 } as React.CSSProperties}>
           <div className="p-2.5 bg-primary/10 rounded-lg text-primary shadow-sm border border-primary/20">
             <Box className="size-7" />
           </div>
@@ -111,7 +111,7 @@ export default function NewChallengePage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 items-start">
           {/* Left Column: Configuration */}
-          <div className="lg:col-span-2 space-y-8">
+          <div className="lg:col-span-2 space-y-8 animate-fade-up" style={{ '--stagger': 1 } as React.CSSProperties}>
             <section className="bg-card border border-border rounded-lg shadow-sm overflow-hidden">
               <div className="p-6 border-b border-border bg-muted/5 flex items-center gap-2">
                 <Settings className="size-4 text-primary" />
@@ -292,7 +292,7 @@ export default function NewChallengePage() {
           </div>
 
           {/* Right Column: Summary & Deploy */}
-          <div className="lg:sticky lg:top-8 space-y-6">
+          <div className="lg:sticky lg:top-8 space-y-6 animate-fade-up" style={{ '--stagger': 2 } as React.CSSProperties}>
             <div className="bg-card border border-border rounded-lg shadow-2xl overflow-hidden flex flex-col border-t-primary/20">
               {/* Thumbnail Preview */}
               <div className="aspect-[16/10] bg-muted relative group overflow-hidden">
