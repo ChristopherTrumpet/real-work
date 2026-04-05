@@ -123,12 +123,6 @@
   html {
     @apply font-sans;
   }
-
-  :root {
-    --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
-    --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
-    --ease-in-quart: cubic-bezier(0.5, 0, 0.75, 0);
-  }
 }
 
 @layer utilities {
@@ -151,11 +145,25 @@
     50% { opacity: 0; }
   }
 
-  /* Entrance animation for list items — used for staggered feed cards */
-  @keyframes fade-up {
+  /* Landing hero — Laravel-ish calm motion */
+  @keyframes hero-gradient-shift {
+    0%,
+    100% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+  }
+
+  .animate-hero-gradient {
+    animation: hero-gradient-shift 14s ease-in-out infinite;
+  }
+
+  @keyframes hero-rise {
     from {
       opacity: 0;
-      transform: translateY(8px);
+      transform: translateY(14px);
     }
     to {
       opacity: 1;
@@ -163,18 +171,64 @@
     }
   }
 
-  .animate-fade-up {
-    animation: fade-up 0.45s var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1)) both;
-    animation-delay: calc(var(--stagger, 0) * 60ms);
+  .hero-rise {
+    animation: hero-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    opacity: 0;
   }
-}
 
-/* Respect reduced motion — not optional */
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
+  .hero-rise-delay-1 {
+    animation-delay: 0.1s;
+  }
+
+  .hero-rise-delay-2 {
+    animation-delay: 0.18s;
+  }
+
+  /* Hero headline only — staggered reveal (subtext/children stay static) */
+  @keyframes hero-headline-reveal {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .hero-headline-reveal {
+    animation: hero-headline-reveal 0.72s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    opacity: 0;
+  }
+
+  .hero-headline-reveal-delay-1 {
+    animation-delay: 0.09s;
+  }
+
+  .hero-headline-reveal-delay-2 {
+    animation-delay: 0.2s;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-hero-gradient {
+      animation: none;
+      background-position: 50% 50%;
+    }
+
+    .hero-rise,
+    .hero-rise-delay-1,
+    .hero-rise-delay-2 {
+      animation: none;
+      opacity: 1;
+      transform: none;
+    }
+
+    .hero-headline-reveal,
+    .hero-headline-reveal-delay-1,
+    .hero-headline-reveal-delay-2 {
+      animation: none;
+      opacity: 1;
+      transform: none;
+    }
   }
 }
